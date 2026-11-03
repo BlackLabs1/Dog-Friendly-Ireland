@@ -105,7 +105,8 @@
     designated: { label: 'Dogs welcome',         note: 'This place is set up for dogs.', rank: 3 },
     leashed:    { label: 'Dogs on a lead',       note: 'Dogs are allowed if kept on a lead.', rank: 2 },
     outside:    { label: 'Dogs outside only',    note: 'Dogs are allowed outside, for example in a beer garden or on a terrace, but not indoors.', rank: 1 },
-    service:    { label: 'Dog service',          note: 'A service for dogs and their owners.', rank: 3 }
+    service:    { label: 'Dog service',          note: 'A service for dogs and their owners.', rank: 3 },
+    friendly:   { label: 'Dog friendly',         note: 'Reported as dog friendly. Ask whether dogs can come inside or sit outside.', rank: 2 }
   };
 
   function policyOf(t, cat) {

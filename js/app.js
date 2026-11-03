@@ -284,12 +284,21 @@
     return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
   }
   function directionsUrl(p) {
-    return 'https://www.google.com/maps/dir/?api=1&destination=' + p.la + ',' + p.lo;
+    // Places only known to be in a town (not pinned exactly) are routed by name instead of coordinates
+    var dest = p.w && p.w.a ? p.n + ', ' + [town(p.t), p.t['addr:county']].filter(Boolean).join(', ') : p.la + ',' + p.lo;
+    return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(dest);
   }
   function osmUrl(p) {
     var type = { n: 'node', w: 'way', r: 'relation' }[p.id.charAt(0)];
-    return 'https://www.openstreetmap.org/' + type + '/' + p.id.slice(1);
+    return type ? 'https://www.openstreetmap.org/' + type + '/' + p.id.slice(1)
+      : 'https://www.openstreetmap.org/#map=17/' + p.la + '/' + p.lo;
   }
+  function reportUrl(p) {
+    return 'https://github.com/BlackLabs1/Dog-Friendly-Ireland/issues/new?title=' +
+      encodeURIComponent('Correction: ' + p.n + ' (' + (town(p.t) || '') + ')') +
+      '&body=' + encodeURIComponent('Place id: ' + p.id + '\n\nWhat should change?\n');
+  }
+  function host(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } }
   function photoUrl(t) {
     if (t.wikimedia_commons && /^File:/i.test(t.wikimedia_commons)) {
       return 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(t.wikimedia_commons.replace(/^File:/i, '')) + '?width=900';
@@ -310,7 +319,7 @@
       (state.user ? ' · ' + fmtKm(km(state.user, [p.la, p.lo])) + ' away' : '') + '</p></div>' +
       '<button class="close" type="button" id="close" aria-label="Close">' + ico('close') + '</button></div>';
 
-    var extra = [t['dog:note'], t['dog:description'], t['dog:conditional'] ? 'Conditions: ' + t['dog:conditional'] : ''].filter(Boolean);
+    var extra = [t['dog:note'], t['dog:description'], t['dog:conditional'] ? 'Conditions: ' + t['dog:conditional'] : '', p.w && p.w.n].filter(Boolean);
     h += '<div class="policy p-' + p.d + '"><strong>' + esc(pol.label) + '</strong><p>' + esc(pol.note) + '</p>' +
       extra.map(function (e) { return '<p class="extra">' + esc(e) + '</p>'; }).join('') + '</div>';
 
@@ -359,10 +368,16 @@
     var wc = { yes: 'Wheelchair accessible', limited: 'Partly wheelchair accessible', no: 'Not wheelchair accessible' }[t.wheelchair];
     if (wc) facts += fact('access', 'Access', esc(wc));
     if (t.operator && t.operator !== p.n) facts += fact('info', 'Run by', esc(t.operator));
+    if (p.w && p.w.a) facts += fact('pin', 'Location', 'Shown at the centre of ' + esc(town(t) || 'the town') + '. Use Google Maps for the exact spot.');
+    if (p.w && p.w.s && p.w.s.length) facts += fact('info', 'Listed as dog friendly by', p.w.s.map(function (s) {
+      return '<a href="' + esc(s) + '" target="_blank" rel="noopener">' + esc(host(s)) + '</a>';
+    }).join('<br>'));
     if (facts) h += '<dl class="facts">' + facts + '</dl>';
 
+    var webOnly = p.w && 'a' in p.w && !/^[nwr]\d/.test(p.id);
     h += '<p class="fix">' + (t.check_date ? 'Details last checked ' + esc(fmtDate(t.check_date)) + '. ' : '') +
-      'Something wrong or missing? <a href="' + esc(osmUrl(p)) + '" target="_blank" rel="noopener">Fix this on OpenStreetMap</a>.</p>';
+      (webOnly ? 'Something wrong or out of date? <a href="' + esc(reportUrl(p)) + '" target="_blank" rel="noopener">Report it</a>, or <a href="' + esc(osmUrl(p)) + '" target="_blank" rel="noopener">add it to OpenStreetMap</a>.'
+               : 'Something wrong or missing? <a href="' + esc(osmUrl(p)) + '" target="_blank" rel="noopener">Fix this on OpenStreetMap</a>.') + '</p>';
     return h + '</div>';
   }
 

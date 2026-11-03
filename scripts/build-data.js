@@ -10,6 +10,7 @@ const path = require('path');
 const P = require('../js/places.js');
 const { buildWebPlaces } = require('./web-places.js');
 const { loadSuggestions } = require('./suggestions.js');
+const { nameAndPlace } = require('./reverse.js');
 
 const DATA = path.join(__dirname, '..', 'data');
 const OSM_FILE = path.join(DATA, 'osm-places.json');
@@ -108,8 +109,12 @@ function dedupe(list) {
   const osm = await osmPlaces();
   const byId = {};
   osm.places.forEach(p => { delete p.w; byId[p.id] = p; });
+  await nameAndPlace(osm.places);
   const web = await buildWebPlaces(byId, await loadSuggestions());
-  const places = dedupe(osm.places.concat(web.places));
+  const closedFile = path.join(DATA, 'closed.json');
+  const closed = fs.existsSync(closedFile) ? JSON.parse(fs.readFileSync(closedFile, 'utf8')) : {};
+  const places = dedupe(osm.places.concat(web.places)).filter(p => !closed[p.id]);
+  console.log('Left out', Object.keys(closed).length, 'places listed as permanently closed');
   const out = {
     generated: osm.generated,
     built: new Date().toISOString(),

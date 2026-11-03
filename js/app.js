@@ -276,7 +276,7 @@
 
   function googleUrl(p) {
     var t = p.t, q;
-    if (p.u) q = p.la + ',' + p.lo;
+    if (p.u || p.gn) q = p.la + ',' + p.lo;
     else {
       var where = [t['addr:street'], town(t), t['addr:county']].filter(Boolean).join(', ');
       q = where ? p.n + ', ' + where : p.n + ' near ' + p.la.toFixed(5) + ',' + p.lo.toFixed(5);

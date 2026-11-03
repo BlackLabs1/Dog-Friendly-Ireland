@@ -33,12 +33,24 @@ async function reverse(la, lo) {
 }
 
 const TOWN_KEYS = ['addr:town', 'addr:city', 'addr:village', 'addr:suburb', 'addr:place'];
+// Administrative labels that read badly as place names
+const ADMIN = /\bD?ED\b|municipal district|electoral|\brural\b|\burban\b|local electoral|county council/i;
+function clean(v) {
+  if (!v) return '';
+  // "Dunmurry ED" -> "Dunmurry", "Balbriggan Rural DED 1986" -> "Balbriggan". Municipal districts are too broad, so they're dropped.
+  v = v.replace(/\s+(rural\s+|urban\s+)?D?ED(\s+\d{4})?$/i, '')
+    .replace(/\s+(rural|urban)$/i, '').trim();
+  return v && !ADMIN.test(v) ? v : '';
+}
+// Dog parks whose OSM name only describes the enclosure ("Small Dog", "Large dogs area")
+const GENERIC = /^(the\s+)?(small|large|big|little|puppy|agility|quiet)?\s*(dogs?|dog park|dog run|dog area|dog walking area|enclosure|off[- ]lead area)(\s+(area|run|park|section|enclosure))?$/i;
 
 async function nameAndPlace(places, log = console.log, maxLookups = 3000) {
   const cache = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, 'utf8')) : {};
   let looked = 0, named = 0;
   for (const p of places) {
-    const needsName = p.u, needsTown = !TOWN_KEYS.some(k => p.t[k]);
+    const generic = p.c === 'dogpark' && !p.u && GENERIC.test(p.n.trim());
+    const needsName = p.u || generic, needsTown = !TOWN_KEYS.some(k => p.t[k]);
     if (!needsName && !needsTown) continue;
     let r = cache[p.id];
     if (r === undefined) {
@@ -48,15 +60,17 @@ async function nameAndPlace(places, log = console.log, maxLookups = 3000) {
       if (looked % 50 === 0) { fs.writeFileSync(CACHE, JSON.stringify(cache)); log('  reverse lookups', looked); }
     }
     if (!r) continue;
-    if (needsTown && r.town) p.t['addr:town'] = r.town;
+    const area = clean(r.area) || clean(r.town), townName = clean(r.town) || clean(r.area);
+    if (needsTown && townName) p.t['addr:town'] = townName;
     if (needsTown && r.county && !p.t['addr:county']) p.t['addr:county'] = r.county;
     if (needsName) {
       const kind = p.k || 'Place';
-      const park = r.park && !/^dog (park|run|area)$/i.test(r.park) ? r.park : '';
+      const park = r.park && !GENERIC.test(r.park.trim()) && r.park.trim().toLowerCase() !== p.n.trim().toLowerCase() ? r.park : '';
       const label = kind === 'Other' ? 'Dog-friendly spot' : kind;
-      if (park && p.c === 'dogpark') p.n = /dog/i.test(park) ? park : park + ' Dog Park';
+      const part = generic ? ' (' + p.n.trim().toLowerCase() + ')' : '';
+      if (park && p.c === 'dogpark') p.n = (/dog/i.test(park) ? park : park + ' Dog Park') + part;
       else if (park) p.n = label + ' in ' + park;
-      else if (r.area) p.n = label + ', ' + r.area;
+      else if (area) p.n = (generic ? 'Dog park' : label) + ', ' + area + part;
       else continue;
       p.u = 0; p.gn = 1; named++;
     }

@@ -40,9 +40,7 @@ function createSuggestForm() {
   // Work out the entry numbers the app needs by building a pre-filled link
   var response = form.createResponse();
   items.forEach(function (item, i) {
-    var r = item.getType() === FormApp.ItemType.PARAGRAPH_TEXT
-      ? item.asParagraphTextItem().createResponse('v' + i)
-      : item.asTextItem().createResponse('v' + i);
+    var r = item.createResponse('v' + i);
     response.withItemResponse(r);
   });
   var prefilled = response.toPrefilledUrl();

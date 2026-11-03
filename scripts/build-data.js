@@ -80,6 +80,9 @@ function mergeInto(keep, drop) {
     keep.w.s = Array.from(new Set((keep.w.s || []).concat(drop.w.s || [])));
     if (drop.w.n && !keep.w.n) keep.w.n = drop.w.n;
     if (drop.w.by && !keep.w.by) keep.w.by = drop.w.by;
+    const vr = { business: 3, official: 2, suggested: 1, unconfirmed: 0 };
+    if ((vr[drop.w.v] || 0) > (vr[keep.w.v] || 0)) { keep.w.v = drop.w.v; if (drop.w.c) keep.w.c = drop.w.c; }
+    if (drop.w.f && !keep.w.f) keep.w.f = drop.w.f;
     if ('a' in keep.w && !drop.w.a) keep.w.a = 0;
   }
   const rank = { yes: 4, unleashed: 4, service: 4, leashed: 3, outside: 2, friendly: 1 };

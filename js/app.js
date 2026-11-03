@@ -195,7 +195,7 @@
   // ---------- list ----------
   function cardHtml(p, from) {
     var c = P.CAT_BY_ID[p.c], pol = P.POLICIES[p.d];
-    var where = [p.k, town(p.t) || p.t['addr:county']].filter(Boolean).join(' · ');
+    var where = [p.k, town(p.t) || p.t['addr:county'], p.w && p.w.v === 'unconfirmed' ? 'not yet confirmed' : ''].filter(Boolean).join(' · ');
     var dist = from ? fmtKm(km(from, [p.la, p.lo])) : '';
     return '<li><button class="card" type="button" data-id="' + p.id + '" style="--dot:' + c.color + '">' +
       '<span class="dot"><svg viewBox="0 0 64 64"><use href="#paw"/></svg></span>' +
@@ -368,9 +368,15 @@
     if (t.operator && t.operator !== p.n) facts += fact('info', 'Run by', esc(t.operator));
     if (p.w && p.w.a) facts += fact('pin', 'Location', 'Shown at the centre of ' + esc(town(t) || 'the town') + '. Use Google Maps for the exact spot.');
     if (p.w && p.w.by) facts += fact('check', 'Suggested through this app', p.w.by === 'owner' ? 'By the owner or staff' : 'By a visitor');
-    if (p.w && p.w.s && p.w.s.length) facts += fact('info', 'Listed as dog friendly by', p.w.s.map(function (s) {
-      return '<a href="' + esc(s) + '" target="_blank" rel="noopener">' + esc(host(s)) + '</a>';
-    }).join('<br>'));
+    if (p.w && p.w.s && p.w.s.length) {
+      var links = p.w.s.map(function (s) { return '<a href="' + esc(s) + '" target="_blank" rel="noopener">' + esc(host(s)) + '</a>'; }).join('<br>');
+      var when = p.w.c ? ' (checked ' + esc(fmtDate(p.w.c)) + ')' : '';
+      if (p.w.v === 'business') facts += fact('check', 'Confirmed by the business' + when, links);
+      else if (p.w.v === 'official') facts += fact('check', 'Confirmed by the official tourism guide' + when, links);
+      else if (p.w.v !== 'suggested') facts += fact('info', 'Not yet confirmed by the business', 'Listed as dog friendly by ' + links + '. Check before you go.');
+      else facts += fact('info', 'Link', links);
+      if (p.w.f && p.w.v !== 'unconfirmed') facts += fact('info', 'First listed by', '<a href="' + esc(p.w.f) + '" target="_blank" rel="noopener">' + esc(host(p.w.f)) + '</a>');
+    }
     if (facts) h += '<dl class="facts">' + facts + '</dl>';
 
     h += '<a class="gmaps" href="' + esc(googleUrl(p)) + '" target="_blank" rel="noopener">' + ico('gmaps') +

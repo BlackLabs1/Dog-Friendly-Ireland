@@ -111,7 +111,7 @@ function hash(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0)
 /* Returns { places, stats }. osmById: map of existing OSM records (by id) so matches merge instead of duplicating. */
 async function buildWebPlaces(osmById, extraRows = [], log = console.log) {
   const fileRows = fs.existsSync(CSV) ? parseCsv(fs.readFileSync(CSV, 'utf8')) : [];
-  const rows = fileRows.concat(extraRows).filter(r => r.name && r.county);
+  const rows = fileRows.concat(extraRows).filter(r => r.name && r.county && r.verified !== 'closed');
   const cache = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, 'utf8')) : {};
   const out = []; let merged = 0, looked = 0, failed = 0, approx = 0;
   for (const r of rows) {
@@ -134,6 +134,9 @@ async function buildWebPlaces(osmById, extraRows = [], log = console.log) {
       existing.w.s = Array.from(new Set(existing.w.s.concat(src)));
       if (r.note && !existing.w.n) existing.w.n = r.note;
       if (r.by && !existing.w.by) existing.w.by = r.by;
+      existing.w.v = r.verified || 'unconfirmed';
+      if (r.found_in && r.found_in !== r.source) existing.w.f = r.found_in;
+      if (r.checked) existing.w.c = r.checked;
       if (!existing.t.dog && existing.d !== 'service') existing.d = policy;
       merged++;
       continue;
@@ -148,7 +151,8 @@ async function buildWebPlaces(osmById, extraRows = [], log = console.log) {
       id: g.osm || 'x' + hash(key),
       la: Math.round(la * 1e6) / 1e6, lo: Math.round(lo * 1e6) / 1e6,
       n: r.name, u: 0, c: cat, d: policy, k: KIND[cat], t: tags,
-      w: Object.assign({ s: src, n: r.note || '', a: g.approx }, r.by ? { by: r.by } : {})
+      w: Object.assign({ s: src, n: r.note || '', a: g.approx, v: r.by ? 'suggested' : (r.verified || 'unconfirmed') },
+        r.by ? { by: r.by } : {}, r.found_in && r.found_in !== r.source ? { f: r.found_in } : {}, r.checked ? { c: r.checked } : {})
     });
   }
   fs.writeFileSync(CACHE, JSON.stringify(cache));

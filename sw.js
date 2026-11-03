@@ -1,7 +1,7 @@
 /* Offline support: the app itself works offline; map tiles need a connection. */
-var VERSION = 'dfi-v2';
+var VERSION = 'dfi-v3';
 var SHELL = [
-  './', 'index.html', 'css/app.css', 'js/places.js', 'js/app.js', 'manifest.webmanifest',
+  './', 'index.html', 'css/app.css', 'js/config.js', 'js/places.js', 'js/app.js', 'manifest.webmanifest',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'
@@ -21,7 +21,7 @@ self.addEventListener('fetch', function (e) {
   if (req.method !== 'GET') return;
   var url = new URL(req.url);
   // Map tiles, place data and live map-server queries: always go to the network.
-  if (/tile\.openstreetmap\.org$/.test(url.hostname) || /overpass/.test(url.hostname) || /data\/ireland\.json$/.test(url.pathname)) return;
+  if (/google\.com$/.test(url.hostname) || /tile\.openstreetmap\.org$/.test(url.hostname) || /overpass/.test(url.hostname) || /data\/ireland\.json$/.test(url.pathname)) return;
   // App files, Leaflet and fonts: serve from cache, refresh in the background.
   e.respondWith(caches.open(VERSION).then(function (cache) {
     return cache.match(req, { ignoreSearch: url.origin === location.origin }).then(function (hit) {

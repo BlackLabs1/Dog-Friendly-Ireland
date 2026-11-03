@@ -67,6 +67,54 @@
       </div>
     </section>
 
+    <section class="view view-suggest" id="view-suggest" aria-label="Suggest a place" hidden>
+      <form class="prose suggest" id="suggest-form" novalidate>
+        <h2>Suggest a place</h2>
+        <p>Know somewhere that welcomes dogs? Tell us and we'll add it after a quick check. Owners and staff are very welcome to list their own business.</p>
+
+        <label class="field" for="s-name"><span>Name of the place <b>*</b></span>
+          <input id="s-name" name="name" required maxlength="120" autocomplete="off"></label>
+
+        <div class="row2">
+          <label class="field" for="s-town"><span>Town or area <b>*</b></span>
+            <input id="s-town" name="town" required maxlength="80" autocomplete="off"></label>
+          <label class="field" for="s-county"><span>County <b>*</b></span>
+            <select id="s-county" name="county" required><option value="">Choose…</option></select></label>
+        </div>
+
+        <label class="field" for="s-type"><span>Type of place <b>*</b></span>
+          <select id="s-type" name="type" required><option value="">Choose…</option></select></label>
+
+        <fieldset class="field">
+          <legend>Where are dogs allowed? <b>*</b></legend>
+          <div class="choices">
+            <label><input type="radio" name="dogs" value="Inside" id="s-dogs-in" required> Inside</label>
+            <label><input type="radio" name="dogs" value="Outside only" id="s-dogs-out"> Outside only</label>
+            <label><input type="radio" name="dogs" value="On a lead" id="s-dogs-lead"> On a lead</label>
+            <label><input type="radio" name="dogs" value="Not sure" id="s-dogs-unsure"> Not sure</label>
+          </div>
+        </fieldset>
+
+        <label class="field" for="s-link"><span>Website, Facebook or Instagram link</span>
+          <input id="s-link" name="link" type="url" inputmode="url" maxlength="300" placeholder="https://" autocomplete="off"></label>
+
+        <label class="field" for="s-notes"><span>Anything dog owners should know?</span>
+          <textarea id="s-notes" name="notes" rows="3" maxlength="500" placeholder="Water bowls, dog treats, which rooms or areas…"></textarea></label>
+
+        <label class="check" for="s-owner"><input type="checkbox" id="s-owner" name="owner"> I own or work at this place</label>
+
+        <p class="form-error" id="s-error" role="alert" hidden></p>
+        <button class="btn" type="submit" id="s-submit">Send suggestion</button>
+        <p class="small">Please don't include personal details. Suggestions are checked before they appear in the app.</p>
+      </form>
+      <div class="prose sent" id="suggest-sent" hidden>
+        <svg class="sent-paw" viewBox="0 0 64 64" aria-hidden="true"><use href="#paw"/></svg>
+        <h2>Thanks!</h2>
+        <p>We'll check <strong id="sent-name"></strong> and add it to the map. That usually takes a day or two.</p>
+        <button class="btn" type="button" id="suggest-again">Suggest another place</button>
+      </div>
+    </section>
+
     <section class="view view-about" id="view-about" aria-label="About" hidden>
       <div class="prose">
         <h2>About this app</h2>
@@ -80,7 +128,7 @@
         <button class="btn" id="refresh" type="button">Check for new places</button>
 
         <h3>Add a place or fix a mistake</h3>
-        <p>Know a dog-friendly spot that's missing? Add it to OpenStreetMap and it will appear here after the next update. The easiest way on a phone is the free <strong>Every Door</strong> or <strong>StreetComplete</strong> app, or use the <em>Fix this on OpenStreetMap</em> link on any place.</p>
+        <p>Know a dog-friendly spot that's missing? <a href="#suggest">Suggest it here</a>. You can also add it to OpenStreetMap and it will appear here after the next update. The easiest way on a phone is the free <strong>Every Door</strong> or <strong>StreetComplete</strong> app, or use the <em>Fix this on OpenStreetMap</em> link on any place.</p>
         <p>To mark a place as dog friendly, give it the tag <code>dog=yes</code> (dogs inside), <code>dog=outside</code> (outside only) or <code>dog=leashed</code> (on a lead).</p>
 
         <h3>Always check first</h3>
@@ -98,6 +146,8 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg><span>List</span></a>
     <a href="#saved" data-view="saved">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span>Saved</span></a>
+    <a href="#suggest" data-view="suggest">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span>Suggest</span></a>
     <a href="#about" data-view="about">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
   </nav>
@@ -124,6 +174,7 @@
 </svg>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="js/config.js"></script>
 <script src="js/places.js"></script>
 <script src="js/app.js"></script>
 </body>

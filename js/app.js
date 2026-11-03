@@ -326,8 +326,6 @@
     var ph = photoUrl(t);
     if (ph) h += '<figure class="photo"><img src="' + esc(ph) + '" alt="Photo of ' + esc(p.n) + '" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></figure>';
 
-    h += '<a class="gmaps" href="' + esc(googleUrl(p)) + '" target="_blank" rel="noopener">' + ico('gmaps') +
-      '<div><strong>See photos & reviews on Google Maps</strong><span>Opens in your Google Maps app</span></div></a>';
 
     var phone = t.phone || t['contact:phone'] || t.mobile || t['contact:mobile'];
     var site = t.website || t['contact:website'] || t.url;
@@ -369,10 +367,14 @@
     if (wc) facts += fact('access', 'Access', esc(wc));
     if (t.operator && t.operator !== p.n) facts += fact('info', 'Run by', esc(t.operator));
     if (p.w && p.w.a) facts += fact('pin', 'Location', 'Shown at the centre of ' + esc(town(t) || 'the town') + '. Use Google Maps for the exact spot.');
+    if (p.w && p.w.by) facts += fact('check', 'Suggested through this app', p.w.by === 'owner' ? 'By the owner or staff' : 'By a visitor');
     if (p.w && p.w.s && p.w.s.length) facts += fact('info', 'Listed as dog friendly by', p.w.s.map(function (s) {
       return '<a href="' + esc(s) + '" target="_blank" rel="noopener">' + esc(host(s)) + '</a>';
     }).join('<br>'));
     if (facts) h += '<dl class="facts">' + facts + '</dl>';
+
+    h += '<a class="gmaps" href="' + esc(googleUrl(p)) + '" target="_blank" rel="noopener">' + ico('gmaps') +
+      '<div><strong>See photos & reviews on Google Maps</strong><span>Opens in your Google Maps app</span></div></a>';
 
     var webOnly = p.w && 'a' in p.w && !/^[nwr]\d/.test(p.id);
     h += '<p class="fix">' + (t.check_date ? 'Details last checked ' + esc(fmtDate(t.check_date)) + '. ' : '') +
@@ -453,10 +455,11 @@
     var h = location.hash.replace(/^#/, '');
     if (h.indexOf('place-') === 0) { openPlace(h.slice(6)); return; }
     closePlace();
-    var v = /^(map|list|saved|about)$/.test(h) ? h : 'map';
+    var v = /^(map|list|saved|suggest|about)$/.test(h) ? h : 'map';
     if (v !== 'list') state.areaOnly = false;
     state.view = v;
-    ['map', 'list', 'saved', 'about'].forEach(function (x) { $('view-' + x).hidden = x !== v; });
+    $('app').setAttribute('data-view', v);
+    ['map', 'list', 'saved', 'suggest', 'about'].forEach(function (x) { $('view-' + x).hidden = x !== v; });
     document.querySelectorAll('.tabs a').forEach(function (a) {
       if (a.dataset.view === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
@@ -510,9 +513,68 @@
     });
   }
 
+  // ---------- suggest a place ----------
+  var COUNTIES = ['Antrim', 'Armagh', 'Carlow', 'Cavan', 'Clare', 'Cork', 'Derry', 'Donegal', 'Down', 'Dublin', 'Fermanagh',
+    'Galway', 'Kerry', 'Kildare', 'Kilkenny', 'Laois', 'Leitrim', 'Limerick', 'Longford', 'Louth', 'Mayo', 'Meath', 'Monaghan',
+    'Offaly', 'Roscommon', 'Sligo', 'Tipperary', 'Tyrone', 'Waterford', 'Westmeath', 'Wexford', 'Wicklow'];
+  var TYPES = ['Café', 'Pub or bar', 'Restaurant or takeaway', 'Hotel, B&B or self-catering', 'Campsite or glamping', 'Shop',
+    'Shopping centre', 'Garden centre', 'Park, beach or walk', 'Attraction or day out', 'Hospital, care home or clinic',
+    'Vet', 'Pet shop or groomer', 'Kennels, daycare or training', 'Dog park', 'Other'];
+  function initSuggest() {
+    $('s-county').insertAdjacentHTML('beforeend', COUNTIES.map(function (c) { return '<option>' + c + '</option>'; }).join(''));
+    $('s-type').insertAdjacentHTML('beforeend', TYPES.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join(''));
+    var f = $('suggest-form');
+    f.addEventListener('input', function (e) { $('s-error').hidden = true; if (e.target.getAttribute('aria-invalid') === 'true' && e.target.value.trim()) e.target.setAttribute('aria-invalid', 'false'); });
+    f.addEventListener('change', function (e) { if (e.target.getAttribute('aria-invalid') === 'true' && e.target.value) e.target.setAttribute('aria-invalid', 'false'); });
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var err = $('s-error'); err.hidden = true;
+      var bad = null;
+      ['s-name', 's-town', 's-county', 's-type'].forEach(function (id) {
+        var el = $(id), ok = !!el.value.trim();
+        el.setAttribute('aria-invalid', ok ? 'false' : 'true');
+        if (!ok && !bad) bad = el;
+      });
+      var dogs = f.querySelector('input[name="dogs"]:checked');
+      if (!bad && !dogs) bad = $('s-dogs-in');
+      var link = $('s-link').value.trim();
+      if (!bad && link && !/^https?:\/\/\S+\.\S+/.test(link)) {
+        if (/^\S+\.\S+$/.test(link)) $('s-link').value = link = 'https://' + link;
+        else bad = $('s-link');
+      }
+      if (bad) {
+        err.textContent = bad.id === 's-link' ? 'That link doesn\'t look right. Paste the full web address, or leave it empty.'
+          : bad.name === 'dogs' ? 'Choose where dogs are allowed, or pick "Not sure".' : 'Please fill in the fields marked *.';
+        err.hidden = false; bad.focus(); return;
+      }
+      var cfg = (window.DFI_CONFIG || {}).suggestForm || {};
+      if (!cfg.action || !cfg.fields) {
+        err.textContent = 'Suggestions aren\'t switched on yet. Please try again soon.'; err.hidden = false; return;
+      }
+      var values = {
+        name: $('s-name').value.trim(), town: $('s-town').value.trim(), county: $('s-county').value,
+        type: $('s-type').value, dogs: dogs.value, link: link, notes: $('s-notes').value.trim(),
+        owner: $('s-owner').checked ? 'Yes' : 'No'
+      };
+      var body = new URLSearchParams();
+      Object.keys(cfg.fields).forEach(function (k) { if (values[k] != null) body.append(cfg.fields[k], values[k]); });
+      var btn = $('s-submit'); btn.disabled = true; btn.textContent = 'Sending…';
+      // Google Forms accepts the post but doesn't let the page read the reply, so a network error is the only failure we can see
+      fetch(cfg.action, { method: 'POST', mode: 'no-cors', body: body }).then(function () {
+        $('sent-name').textContent = values.name;
+        f.hidden = true; $('suggest-sent').hidden = false; f.reset();
+        f.querySelectorAll('[aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
+        $('view-suggest').scrollTop = 0;
+      }).catch(function () {
+        err.textContent = 'Couldn\'t send. Check your connection and try again.'; err.hidden = false;
+      }).then(function () { btn.disabled = false; btn.textContent = 'Send suggestion'; });
+    });
+    $('suggest-again').addEventListener('click', function () { $('suggest-sent').hidden = true; f.hidden = false; $('s-name').focus(); });
+  }
+
   // ---------- start ----------
   function start() {
-    initMap(); bind(); route();
+    initMap(); bind(); initSuggest(); route();
     loadData().then(function (d) {
       setData(d);
       $('loading').hidden = true;

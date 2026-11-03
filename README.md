@@ -55,3 +55,24 @@ Edit OpenStreetMap (phone apps: Every Door, StreetComplete). Tag a place `dog=ye
 or `dog=leashed`. It appears in the app after the next nightly update.
 
 Map data © OpenStreetMap contributors, ODbL.
+
+## Researched places
+`data/web-places.csv` lists dog-friendly places found in public guides, tourism-board pages and business websites,
+one row each with its source. Columns: `name, category, town, county, policy, source, note`.
+- category: cafe, pub, food, stay, shop, outdoors, attraction, petshop, care, dogpark, rescue, vet, health
+- policy: yes (inside), outside, leashed, unleashed, friendly (listed as dog friendly, details not given)
+
+Each night the build pins new rows on the map (using OpenStreetMap's search; results cached in
+`data/geocode-cache.json`), merges duplicates, and republishes.
+
+## Suggest a place
+The app's Suggest tab sends suggestions to a Google Form you own. Nothing appears in the app until you approve it.
+1. Create a Google Form with these questions, all **Short answer** except the notes (**Paragraph**):
+   Name of the place · Town or area · County · Type of place · Where are dogs allowed? ·
+   Website, Facebook or Instagram link · Anything dog owners should know? · I own or work here
+2. ⋮ menu → **Get pre-filled link**, type 1, 2, 3 … 8 into the questions in order, **Get link**, copy it.
+   These numbers let the app fill the right boxes; `js/config.js` holds the result.
+3. **Responses** tab → **Link to Sheets**. In the new sheet, add a column headed **Approved**.
+4. Sheet: **File → Share → Publish to web** → choose the responses tab and **Comma-separated values (.csv)** → Publish.
+   Put that link in `scripts/suggestions-url.txt`.
+5. To approve a suggestion, type **yes** in its Approved cell. It appears in the app after the next nightly update.

@@ -109,9 +109,9 @@ async function locate(r) {
 function hash(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
 
 /* Returns { places, stats }. osmById: map of existing OSM records (by id) so matches merge instead of duplicating. */
-async function buildWebPlaces(osmById, log = console.log) {
-  if (!fs.existsSync(CSV)) return { places: [], merged: 0 };
-  const rows = parseCsv(fs.readFileSync(CSV, 'utf8')).filter(r => r.name && r.county);
+async function buildWebPlaces(osmById, extraRows = [], log = console.log) {
+  const fileRows = fs.existsSync(CSV) ? parseCsv(fs.readFileSync(CSV, 'utf8')) : [];
+  const rows = fileRows.concat(extraRows).filter(r => r.name && r.county);
   const cache = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, 'utf8')) : {};
   const out = []; let merged = 0, looked = 0, failed = 0, approx = 0;
   for (const r of rows) {
@@ -133,6 +133,7 @@ async function buildWebPlaces(osmById, log = console.log) {
       existing.w = existing.w || { s: [] };
       existing.w.s = Array.from(new Set(existing.w.s.concat(src)));
       if (r.note && !existing.w.n) existing.w.n = r.note;
+      if (r.by && !existing.w.by) existing.w.by = r.by;
       if (!existing.t.dog && existing.d !== 'service') existing.d = policy;
       merged++;
       continue;
@@ -147,7 +148,7 @@ async function buildWebPlaces(osmById, log = console.log) {
       id: g.osm || 'x' + hash(key),
       la: Math.round(la * 1e6) / 1e6, lo: Math.round(lo * 1e6) / 1e6,
       n: r.name, u: 0, c: cat, d: policy, k: KIND[cat], t: tags,
-      w: { s: src, n: r.note || '', a: g.approx }
+      w: Object.assign({ s: src, n: r.note || '', a: g.approx }, r.by ? { by: r.by } : {})
     });
   }
   fs.writeFileSync(CACHE, JSON.stringify(cache));

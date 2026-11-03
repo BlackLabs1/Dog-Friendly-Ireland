@@ -43,7 +43,7 @@ body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
-button, input, select { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 a { color: var(--field); }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
 [hidden] { display: none !important; }
@@ -208,7 +208,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 
 /* ---------- Tabs ---------- */
 .tabs {
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--surface); border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
@@ -317,3 +317,35 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Suggest a place ---------- */
+.suggest { display: grid; gap: 14px; }
+.suggest h2, .suggest > p { margin-bottom: 0; }
+.field { display: grid; gap: 6px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.field > span, .field legend { font-weight: 700; font-size: .95rem; padding: 0; }
+.field b { color: var(--tag); }
+.field input, .field select, .field textarea {
+  width: 100%; border: 1.5px solid var(--line); background: var(--surface); border-radius: 12px;
+  padding: 10px 12px; min-height: 46px; font-size: 1rem;
+}
+.field textarea { resize: vertical; min-height: 90px; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--field); box-shadow: 0 0 0 3px color-mix(in srgb, var(--field) 25%, transparent); }
+.field [aria-invalid="true"] { border-color: #d6336c; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 380px) { .row2 { grid-template-columns: 1fr; } }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choices label {
+  display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); background: var(--surface);
+  border-radius: 999px; padding: 8px 14px; cursor: pointer;
+}
+.choices label:has(input:checked) { border-color: var(--field); background: color-mix(in srgb, var(--field) 12%, var(--surface)); font-weight: 700; }
+.field .choices input { accent-color: var(--field); margin: 0; width: 18px; height: 18px; min-height: 0; padding: 0; border: 0; box-shadow: none; }
+.app[data-view="suggest"] .search, .app[data-view="suggest"] .chips,
+.app[data-view="about"] .search, .app[data-view="about"] .chips { display: none; }
+.check { display: flex; gap: 10px; align-items: center; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--field); }
+.form-error { color: #c2255c; font-weight: 700; margin: 0; }
+.small { font-size: .85rem; color: var(--ink-2); margin: 0 !important; }
+.suggest .btn { justify-self: start; padding: 12px 26px; font-size: 1rem; }
+.sent { text-align: center; padding-top: 48px; }
+.sent-paw { width: 56px; height: 56px; fill: var(--tag); stroke: none; }

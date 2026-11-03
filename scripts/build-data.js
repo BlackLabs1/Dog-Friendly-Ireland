@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const P = require('../js/places.js');
 const { buildWebPlaces } = require('./web-places.js');
+const { loadSuggestions } = require('./suggestions.js');
 
 const DATA = path.join(__dirname, '..', 'data');
 const OSM_FILE = path.join(DATA, 'osm-places.json');
@@ -52,13 +53,60 @@ async function osmPlaces() {
   }
 }
 
+/* Merge duplicates: the same id twice, or the same business recorded twice close together
+   (OpenStreetMap often has a business both as a point and as its building outline). */
+const norm = s => s.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/&/g, ' and ')
+  .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const STOP = new Set(['the', 'and', 'of', 'co', 's', 'ltd', 'limited']);
+const tokens = s => norm(s).split(' ').filter(w => w && !STOP.has(w));
+function km(a, b) {
+  const r = Math.PI / 180, x = (b.lo - a.lo) * r * Math.cos((a.la + b.la) / 2 * r), y = (b.la - a.la) * r;
+  return Math.hypot(x, y) * 6371;
+}
+function sameBusiness(a, b) {
+  if (a.u || b.u || a.c !== b.c) return false;
+  const d = km(a, b);
+  if (d > 0.3) return false;
+  const ta = tokens(a.n), tb = tokens(b.n);
+  if (!ta.length || !tb.length) return false;
+  const [small, big] = ta.length <= tb.length ? [ta, new Set(tb)] : [tb, new Set(ta)];
+  const subset = small.every(w => big.has(w));
+  return subset && (ta.join(' ') === tb.join(' ') || d < 0.1);
+}
+function mergeInto(keep, drop) {
+  Object.keys(drop.t).forEach(k => { if (!keep.t[k]) keep.t[k] = drop.t[k]; });
+  if (drop.w) {
+    keep.w = keep.w || { s: [] };
+    keep.w.s = Array.from(new Set((keep.w.s || []).concat(drop.w.s || [])));
+    if (drop.w.n && !keep.w.n) keep.w.n = drop.w.n;
+    if (drop.w.by && !keep.w.by) keep.w.by = drop.w.by;
+    if ('a' in keep.w && !drop.w.a) keep.w.a = 0;
+  }
+  const rank = { yes: 4, unleashed: 4, service: 4, leashed: 3, outside: 2, friendly: 1 };
+  if ((rank[drop.d] || 0) > (rank[keep.d] || 0)) keep.d = drop.d;
+}
+function dedupe(list) {
+  const byId = new Map(), out = [];
+  let merged = 0;
+  // Prefer OpenStreetMap records with the most detail
+  list.slice().sort((a, b) => (/^x/.test(a.id) - /^x/.test(b.id)) || (Object.keys(b.t).length - Object.keys(a.t).length))
+    .forEach(p => {
+      if (byId.has(p.id)) { mergeInto(byId.get(p.id), p); merged++; return; }
+      const near = out.find(q => Math.abs(q.la - p.la) < 0.01 && Math.abs(q.lo - p.lo) < 0.015 && sameBusiness(q, p));
+      if (near) { mergeInto(near, p); merged++; return; }
+      byId.set(p.id, p); out.push(p);
+    });
+  console.log('Merged', merged, 'duplicates');
+  return out;
+}
+
 (async () => {
   fs.mkdirSync(DATA, { recursive: true });
   const osm = await osmPlaces();
   const byId = {};
   osm.places.forEach(p => { delete p.w; byId[p.id] = p; });
-  const web = await buildWebPlaces(byId);
-  const places = osm.places.concat(web.places);
+  const web = await buildWebPlaces(byId, await loadSuggestions());
+  const places = dedupe(osm.places.concat(web.places));
   const out = {
     generated: osm.generated,
     built: new Date().toISOString(),

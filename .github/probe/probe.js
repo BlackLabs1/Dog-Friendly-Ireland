@@ -1,38 +1,21 @@
-// Temporary: tests which free sources of photos, reviews and contact details respond, and saves samples.
-const fs = require('fs');
+// Temporary: inspects Mangrove reviews and Wikidata nearby search.
 const UA = 'DogFriendlyIreland/1.0 (https://github.com/BlackLabs1/Dog-Friendly-Ireland)';
-const out = 'probe-out'; fs.mkdirSync(out, { recursive: true });
-const log = [];
-async function get(name, url, opts = {}) {
-  try {
-    const r = await fetch(url, Object.assign({ headers: { 'User-Agent': UA, Origin: 'https://blacklabs1.github.io' } }, opts));
-    const body = Buffer.from(await r.arrayBuffer());
-    fs.writeFileSync(out + '/' + name, body);
-    log.push(`${name}: ${r.status} ${body.length} bytes  acao=${r.headers.get('access-control-allow-origin')}  type=${r.headers.get('content-type')}\n  ${url}\n  ${body.slice(0, 600).toString().replace(/\n/g, '\n  ')}\n`);
-  } catch (e) { log.push(`${name}: ERROR ${e.message}\n  ${url}\n`); }
-}
+const j = async u => (await fetch(u, { headers: { 'User-Agent': UA } })).json();
+const dec = jwt => { try { return JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url')); } catch (e) { return null; } };
 (async () => {
-  const F = 'https://failteireland.azure-api.net/opendata-api/v2/';
-  for (const k of ['attractions', 'accommodation', 'activities']) {
-    await get('failte-' + k + '.csv', F + k + '/csv');
-    await get('failte-' + k + '.json', F + k + '?$top=3');
+  for (const r of [500, 50000, 300000]) {
+    const d = await j('https://api.mangrove.reviews/reviews?latitude=53.4&longitude=-7.7&radius=' + r);
+    const subs = d.reviews.map(x => (dec(x.jwt) || x.payload || {}).sub);
+    console.log('radius', r, 'reviews', d.reviews.length, 'keys', Object.keys(d.reviews[0] || {}));
+    const ie = subs.filter(s => /^geo:/.test(s || '')).filter(s => { const m = s.match(/geo:([-\d.]+),([-\d.]+)/); return m && +m[1] > 51.3 && +m[1] < 55.5 && +m[2] > -10.7 && +m[2] < -5.3; });
+    console.log('  in Ireland:', ie.length, ie.slice(0, 15));
+    if (r === 500) console.log('  sample', JSON.stringify(d.reviews[0]).slice(0, 1500), '\n  decoded', JSON.stringify(dec(d.reviews[0].jwt)).slice(0, 800));
   }
-  await get('failte-v1-accommodation.json', 'https://failteireland.azure-api.net/opendata-api/v1/accommodation?$top=3');
-  const M = 'https://api.mangrove.reviews';
-  await get('mangrove-reviews.json', M + '/reviews?limit=3');
-  await get('mangrove-q.json', M + '/reviews?q=Dublin');
-  await get('mangrove-geo.json', M + '/reviews?latitude=53.3446&longitude=-6.2763&radius=50000');
-  await get('mangrove-sub.json', M + '/reviews?sub=' + encodeURIComponent('geo:53.3446,-6.2763?q=The Brazen Head&u=30'));
-  await get('mangrove-geo-search.json', M + '/geo?q=Dublin');
-  await get('mangrove-root.txt', M + '/');
-  const C = 'https://commons.wikimedia.org/w/api.php?format=json&formatversion=2&origin=*&';
-  await get('commons-geo.json', C + 'action=query&generator=geosearch&ggscoord=53.3446|-6.2763&ggsradius=150&ggsnamespace=6&ggslimit=50&prop=imageinfo&iiprop=url|extmetadata|size&iiurlwidth=640');
-  await get('commons-geo-park.json', C + 'action=query&generator=geosearch&ggscoord=53.2715|-6.2695&ggsradius=500&ggsnamespace=6&ggslimit=50&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=640');
-  const W = 'https://www.wikidata.org/w/api.php?format=json&origin=*&';
-  await get('wd-search.json', W + 'action=wbsearchentities&language=en&limit=5&search=' + encodeURIComponent('Lough Eske Castle'));
-  await get('wd-sparql.json', 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(
-    'SELECT (COUNT(*) AS ?n) WHERE { ?i wdt:P625 ?c . ?i wdt:P17 ?country . VALUES ?country { wd:Q27 wd:Q145 } SERVICE wikibase:box { ?i wdt:P625 ?c . bd:serviceParam wikibase:cornerWest "Point(-10.7 51.3)"^^geo:wktLiteral . bd:serviceParam wikibase:cornerEast "Point(-5.3 55.5)"^^geo:wktLiteral . } }'));
-  await get('tourismni.txt', 'https://www.opendatani.gov.uk/api/3/action/package_search?q=tourism&rows=20');
-  fs.writeFileSync(out + '/LOG.txt', log.join('\n'));
-  console.log(log.join('\n'));
+  const s = await j('https://api.mangrove.reviews/subjects?q=Dublin').catch(e => ({ err: e.message }));
+  console.log('subjects', JSON.stringify(s).slice(0, 500));
+  const wd = await j('https://www.wikidata.org/w/api.php?format=json&action=query&list=geosearch&gscoord=54.6948|-8.0536&gsradius=500&gslimit=20');
+  console.log('wikidata geosearch Lough Eske', JSON.stringify(wd).slice(0, 1200));
+  const e = await j('https://www.wikidata.org/w/api.php?format=json&action=wbgetentities&ids=Q111411825&props=labels|descriptions|claims|sitelinks&languages=en');
+  const c = e.entities.Q111411825.claims;
+  console.log('Lough Eske claims', Object.keys(c).join(' '), 'P18', JSON.stringify(c.P18 && c.P18[0].mainsnak.datavalue), 'P154', JSON.stringify(c.P154 && c.P154[0].mainsnak.datavalue), 'P625', JSON.stringify(c.P625 && c.P625[0].mainsnak.datavalue.value));
 })();

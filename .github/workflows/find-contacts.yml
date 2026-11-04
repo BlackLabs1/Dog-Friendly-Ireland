@@ -1,0 +1,31 @@
+name: Find contact details
+
+on:
+  schedule:
+    - cron: '23 5 9 * *'   # 9th of each month
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: contacts
+
+jobs:
+  contacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/find-contacts.js
+      - name: Save contact details
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/contacts.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Update contact details"
+          for i in 1 2 3 4; do git pull --rebase origin main && git push && break; sleep 20; done

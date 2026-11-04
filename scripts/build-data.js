@@ -17,8 +17,13 @@ const DATA = path.join(__dirname, '..', 'data');
 const OSM_FILE = path.join(DATA, 'osm-places.json');
 const OUT = path.join(DATA, 'ireland.json');
 
+// Some mirror servers lag weeks behind; never replace newer data with older.
+function savedDate() {
+  try { return Date.parse(JSON.parse(fs.readFileSync(OSM_FILE, 'utf8')).generated) || 0; } catch (e) { return 0; }
+}
 async function query() {
   const body = 'data=' + encodeURIComponent(P.OVERPASS_QUERY);
+  const have = savedDate();
   let lastErr;
   for (const url of P.OVERPASS_ENDPOINTS) {
     try {
@@ -30,6 +35,8 @@ async function query() {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
       if (json.remark && /error|timed out/i.test(json.remark)) throw new Error(json.remark);
+      const stamp = Date.parse(json.osm3s && json.osm3s.timestamp_osm_base) || 0;
+      if (have && stamp && stamp < have - 2 * 864e5) throw new Error('data is out of date (' + json.osm3s.timestamp_osm_base + ')');
       return json;
     } catch (e) { lastErr = e; console.warn('  failed:', e.message); }
   }

@@ -48,9 +48,27 @@ function keyTokens(name) {
   const first = tk(name2);
   return first.length ? first : tk(name.replace(/\(.*?\)/g, ' '));  // "Small Dog Area in Marlay Park" -> "marlay"
 }
-function titleMatches(tokens, title) {
+// Businesses: every word of the name must be in the photo's title, so "The Bath Pub" doesn't match "Bath Avenue".
+// Parks, beaches and attractions: the distinctive words are enough ("Marlay Park Dog Park" matches "Marlay Park, Rathfarnham").
+const LOOSE = /^(dogpark|outdoors|attraction|rescue)$/;
+const ARTICLES = new Set(['the', 'and', 'of', 'a', 'an', 'at', 'co', 'ltd', 'limited']);
+function strictTokens(name) {
+  return norm(name.replace(/\(.*?\)/g, ' ')).split(' ').filter(w => w && !ARTICLES.has(w));
+}
+function photoFits(p, title) {
+  if (LOOSE.test(p.c)) return titleMatches(keyTokens(p.n), title);
+  const t = strictTokens(p.n);
+  if (!t.length || t.join('').length < 4) return false;
+  if (titleMatches(t, title, true)) return true;
+  // Pubs are often photographed as "The Sunflower" rather than "Sunflower Bar"
+  const short = /^(bar|pub|tavern|lounge)$/.test(t[t.length - 1]) ? t.slice(0, -1) : null;
+  return !!short && (short.length >= 2 || (short.length === 1 && short[0].length >= 6)) && titleMatches(short, title, true);
+}
+const fileTitle = f => { try { return decodeURIComponent((f || '').split('File:')[1] || '').replace(/_/g, ' ').replace(/\.[a-z0-9]+$/i, '').replace(/geograph[\w .-]*\d+/i, ''); } catch (e) { return ''; } };
+function titleMatches(tokens, title, strict) {
   if (!tokens.length) return false;
-  if (tokens.length === 1 && (VAGUE.has(tokens[0]) || tokens[0].length < 4)) return false;
+  if (!strict && tokens.length === 1 && (VAGUE.has(tokens[0]) || tokens[0].length < 4)) return false;
+  if (strict && tokens.length === 1 && VAGUE.has(tokens[0])) return false;
   const t = new Set(norm(title).split(' '));
   return tokens.every(w => t.has(w));
 }
@@ -175,7 +193,8 @@ async function addMedia(places, log = console.log) {
         await sleep(150);
       }
       if (c) {
-        const extra = [].concat(c.img ? [c.img] : [], c.ph || []).filter(x => !(m.ph || []).some(y => y.u === x.u));
+        const extra = [].concat(c.img ? [c.img] : [], (c.ph || []).filter(x => photoFits(p, fileTitle(x.f))))
+          .filter(x => !(m.ph || []).some(y => y.u === x.u));
         if (extra.length) m.ph = (m.ph || []).concat(extra).slice(0, 7);
         if (c.lg) m.lg = c.lg;
         if (c.ds) m.ds = c.ds;
@@ -199,4 +218,4 @@ async function addMedia(places, log = console.log) {
   return media;
 }
 
-module.exports = { addMedia, keyTokens, titleMatches, matchFailte };
+module.exports = { addMedia, keyTokens, titleMatches, matchFailte, photoFits, fileTitle };

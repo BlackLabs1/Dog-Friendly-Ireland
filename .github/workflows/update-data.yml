@@ -38,7 +38,8 @@ jobs:
           git diff --cached --quiet || git commit -m "Update places"
           # If something newer was saved while this ran, keep the newer copy and skip saving
           git pull --rebase origin main || { git rebase --abort; echo "Newer data already saved; skipping."; exit 0; }
-          git push
+          # GitHub sometimes refuses a push for a moment; try a few times
+          for i in 1 2 3 4; do git push && break; sleep 20; git pull --rebase origin main || { git rebase --abort; exit 0; }; done
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

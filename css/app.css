@@ -105,7 +105,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .views { position: relative; min-height: 0; }
 .view { position: absolute; inset: 0; overflow-y: auto; }
 .view-map { overflow: hidden; }
-.map { position: absolute; inset: 0; background: var(--surface-2); }
+.map { position: absolute; inset: 0; background: var(--surface-2); z-index: 0; }  /* keeps Leaflet's own layers and controls below the place sheet */
 @media (prefers-color-scheme: dark) {
   .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) saturate(.6); }
 }
@@ -142,7 +142,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .leaflet-control-layers-expanded { padding: 8px 12px; font-size: .92rem; }
 .leaflet-control-layers label { padding: 4px 0; }
 .route {
-  position: absolute; z-index: 460; left: 10px; right: 10px; bottom: 12px; max-width: 420px; margin: 0 auto;
+  position: absolute; z-index: 460; left: 10px; right: 10px; bottom: 30px; max-width: 420px; margin: 0 auto;
   background: var(--surface); color: var(--ink); border-radius: var(--r); box-shadow: var(--shadow); padding: 12px 14px 10px;
 }
 .route-head { display: flex; align-items: flex-start; gap: 8px; }

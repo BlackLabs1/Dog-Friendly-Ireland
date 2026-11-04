@@ -1,0 +1,21 @@
+name: Check the live site (temporary)
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - run: node .github/check/shots.js
+      - name: Save screenshots to the site-check branch
+        if: always()
+        run: |
+          mkdir -p out && cp -r shots out/ 2>/dev/null || true
+          cd out && git init -q -b site-check && git config user.name "github-actions[bot]" && git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -qm "Site check"
+          for i in 1 2 3 4 5; do git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" site-check && break; sleep 15; done

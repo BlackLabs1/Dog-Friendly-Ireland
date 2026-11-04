@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Photo check · Dog Friendly Ireland</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<style>
+:root { --bg: #f3f6f3; --surface: #fff; --ink: #15211b; --ink-2: #4a5a52; --line: #d3ddd6; --field: #0f5c3d; --field-ink: #fff; --bad: #a3352b; --r: 14px; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0d1a14; --surface: #14251c; --ink: #e7f0eb; --ink-2: #a3b5ab; --line: #2a3e34; --field: #4fbf8a; --field-ink: #06140d; --bad: #f08b80; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 system-ui, "Segoe UI", sans-serif; }
+header { background: var(--field); color: var(--field-ink); padding: 16px max(16px, env(safe-area-inset-left)); }
+header h1 { margin: 0 0 4px; font-size: 1.4rem; }
+header p { margin: 0; opacity: .9; max-width: 60ch; }
+.bar { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding: 10px max(16px, env(safe-area-inset-left)); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bar input, .bar select { font: inherit; border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; background: var(--surface); color: var(--ink); min-width: 0; }
+.bar input { flex: 1 1 180px; }
+.bar button { font: inherit; border: 0; border-radius: 999px; padding: 8px 14px; background: var(--bad); color: #fff; font-weight: 700; cursor: pointer; }
+.bar button:disabled { opacity: .45; cursor: default; }
+.count { color: var(--ink-2); font-size: .9rem; }
+main { padding: 16px max(16px, env(safe-area-inset-left)) 60px; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); }
+.place { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; min-width: 0; }
+.place h2 { margin: 0; font-size: 1.05rem; }
+.place h2 a { color: inherit; }
+.meta { color: var(--ink-2); font-size: .86rem; margin: 2px 0 8px; }
+.photos { display: grid; gap: 8px; grid-template-columns: repeat(2, 1fr); }
+.photos.one { grid-template-columns: 1fr; }
+figure { margin: 0; min-width: 0; }
+figure a { display: block; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: var(--line); }
+figure img { width: 100%; height: 100%; object-fit: cover; display: block; }
+figcaption { font-size: .74rem; color: var(--ink-2); margin-top: 3px; overflow-wrap: anywhere; }
+label.wrong { display: inline-flex; gap: 6px; align-items: center; font-size: .82rem; margin-top: 3px; cursor: pointer; }
+figure.flagged a { outline: 4px solid var(--bad); }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 16px; border-radius: 999px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Photo check</h1>
+  <p>Every place in the app that has photos. Tick any photo that shows the wrong place, then press <strong>Copy wrong photos</strong> and paste the list to Claude. Your ticks are remembered on this device.</p>
+</header>
+<div class="bar">
+  <input id="q" type="search" placeholder="Search name or town" aria-label="Search name or town">
+  <select id="src" aria-label="Photo source"><option value="">All sources</option><option>Wikimedia Commons</option><option>Fáilte Ireland</option></select>
+  <span class="count" id="count">Loading…</span>
+  <button id="copy" type="button" disabled>Copy wrong photos</button>
+</div>
+<main id="list"></main>
+<div class="toast" id="toast" hidden></div>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  var flags = {}; try { flags = JSON.parse(localStorage.getItem('dfi-photo-flags') || '{}'); } catch (e) {}
+  function keep() { try { localStorage.setItem('dfi-photo-flags', JSON.stringify(flags)); } catch (e) {} $('copy').disabled = !Object.keys(flags).length; $('copy').textContent = 'Copy wrong photos (' + Object.keys(flags).length + ')'; }
+  var rows = [];
+  Promise.all([fetch('data/ireland.json').then(function (r) { return r.json(); }), fetch('data/media.json').then(function (r) { return r.json(); })]).then(function (res) {
+    var by = {}; res[0].places.forEach(function (p) { by[p.id] = p; });
+    Object.keys(res[1]).forEach(function (id) {
+      var m = res[1][id], p = by[id];
+      if (p && m.ph && m.ph.length) rows.push({ p: p, ph: m.ph });
+    });
+    rows.sort(function (a, b) { return a.p.n.localeCompare(b.p.n); });
+    keep(); render();
+  });
+  function town(t) { return t['addr:town'] || t['addr:city'] || t['addr:village'] || t['addr:suburb'] || ''; }
+  function render() {
+    var q = $('q').value.trim().toLowerCase(), src = $('src').value, n = 0, html = '';
+    rows.forEach(function (r) {
+      var t = r.p.t, where = [r.p.k, town(t), t['addr:county']].filter(Boolean).join(' · ');
+      if (q && (r.p.n + ' ' + where).toLowerCase().indexOf(q) < 0) return;
+      var ph = r.ph.filter(function (x) { return !src || x.s === src; });
+      if (!ph.length) return;
+      n++;
+      html += '<section class="place"><h2><a href="./#place-' + esc(r.p.id) + '" target="_blank" rel="noopener">' + esc(r.p.n) + '</a></h2><p class="meta">' + esc(where) + '</p>' +
+        '<div class="photos' + (ph.length === 1 ? ' one' : '') + '">' + ph.map(function (x) {
+          var key = r.p.id + ' ' + x.f, on = !!flags[key];
+          return '<figure class="' + (on ? 'flagged' : '') + '"><a href="' + esc(x.f) + '" target="_blank" rel="noopener"><img loading="lazy" referrerpolicy="no-referrer" src="' + esc(x.u) + '" alt="Photo for ' + esc(r.p.n) + '"></a>' +
+            '<figcaption>' + esc([x.a, x.l, x.s].filter(Boolean).join(' · ')) + '</figcaption>' +
+            '<label class="wrong"><input type="checkbox" data-key="' + esc(key) + '"' + (on ? ' checked' : '') + '> Wrong photo</label></figure>';
+        }).join('') + '</div></section>';
+    });
+    $('list').innerHTML = html;
+    $('count').textContent = n + ' places';
+  }
+  $('q').addEventListener('input', render);
+  $('src').addEventListener('change', render);
+  document.addEventListener('change', function (e) {
+    var k = e.target.dataset && e.target.dataset.key; if (!k) return;
+    if (e.target.checked) flags[k] = 1; else delete flags[k];
+    e.target.closest('figure').classList.toggle('flagged', e.target.checked); keep();
+  });
+  $('copy').addEventListener('click', function () {
+    var text = 'Wrong photos:\n' + Object.keys(flags).join('\n');
+    var done = function () { var t = $('toast'); t.textContent = 'Copied. Paste it to Claude.'; t.hidden = false; setTimeout(function () { t.hidden = true; }, 2500); };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () { prompt('Copy this:', text); });
+    else prompt('Copy this:', text);
+  });
+})();
+</script>
+</body>
+</html>

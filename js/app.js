@@ -386,13 +386,14 @@
     var facts = '';
     var addr = addressOf(t);
     if (addr) facts += fact('pin', 'Address', esc(addr) + ' <button class="copy" type="button" data-copy="' + esc(addr) + '">Copy</button>');
-    if (t.opening_hours) facts += fact('clock', 'Opening hours', hoursHtml(t.opening_hours));
+    if (t.opening_hours) facts += fact('clock', t['opening_hours:source'] === 'website' ? 'Opening hours (from their website)' : 'Opening hours', hoursHtml(t.opening_hours));
     if (phone) facts += fact('phone', 'Phone', phone.split(/\s*;\s*/).map(function (n) {
       return '<a href="' + esc(telHref(n)) + '">' + esc(n) + '</a> <button class="copy" type="button" data-copy="' + esc(n) + '">Copy</button>';
     }).join('<br>'));
     var email = t.email || t['contact:email'];
     if (email) facts += fact('mail', 'Email', '<a href="mailto:' + esc(email) + '">' + esc(email) + '</a>');
     if (site) facts += fact('web', 'Website', '<a href="' + esc(url(site)) + '" target="_blank" rel="noopener">' + esc(prettyUrl(site)) + '</a>');
+    if (t['website:menu']) facts += fact('food', 'Menu', '<a href="' + esc(url(t['website:menu'])) + '" target="_blank" rel="noopener">See the menu on their website</a>');
     var fb = t.facebook || t['contact:facebook'], ig = t.instagram || t['contact:instagram'];
     if (fb || ig) facts += fact('social', 'Social', [
       fb ? '<a href="' + esc(social(fb, 'https://www.facebook.com/')) + '" target="_blank" rel="noopener">Facebook</a>' : '',

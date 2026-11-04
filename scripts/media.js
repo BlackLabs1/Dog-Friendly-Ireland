@@ -161,6 +161,9 @@ function matchFailte(p, list) {
 // ---------- main ----------
 async function addMedia(places, log = console.log) {
   const cache = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, 'utf8')) : {};
+  // Photos marked wrong on photos.html: one per line, "placeId photoPageUrl" (or just the photo page URL to drop it everywhere)
+  const BLOCK = path.join(DATA, 'photo-blocklist.txt');
+  const blocked = new Set(fs.existsSync(BLOCK) ? fs.readFileSync(BLOCK, 'utf8').split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#')) : []);
   const now = Date.now(), media = {};
   let looked = 0, withPhotos = 0, fiMatched = 0, fiPhones = 0, fiSites = 0, moved = 0;
 
@@ -205,6 +208,7 @@ async function addMedia(places, log = console.log) {
       const own = { u: 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(file) + '?width=800', f: 'https://commons.wikimedia.org/wiki/File:' + encodeURIComponent(file), s: 'Wikimedia Commons', a: '', l: 'see file page' };
       m.ph = [own].concat((m.ph || []).filter(x => x.f !== own.f)).slice(0, 7);
     }
+    if (m.ph) { m.ph = m.ph.filter(x => !blocked.has(p.id + ' ' + x.f) && !blocked.has(x.f)); if (!m.ph.length) delete m.ph; }
     if (m.ph || m.lg || m.ds) { media[p.id] = m; if (m.ph) withPhotos++; }
   }
   // Drop cache entries for places that no longer exist

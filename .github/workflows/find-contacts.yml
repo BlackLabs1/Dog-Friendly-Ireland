@@ -1,4 +1,4 @@
-name: Find contact details
+name: Read business websites
 
 on:
   schedule:
@@ -14,18 +14,19 @@ concurrency:
 jobs:
   contacts:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - run: node scripts/find-contacts.js
+      - run: node scripts/website-facts.js
       - name: Save contact details
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/contacts.json
+          git add data/contacts.json data/website-facts.json
           git diff --cached --quiet && exit 0
-          git commit -m "Update contact details"
+          git commit -m "Update details from business websites"
           for i in 1 2 3 4; do git pull --rebase origin main && git push && break; sleep 20; done

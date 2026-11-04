@@ -12,6 +12,7 @@ const { buildWebPlaces } = require('./web-places.js');
 const { loadSuggestions } = require('./suggestions.js');
 const { nameAndPlace } = require('./reverse.js');
 const { addMedia } = require('./media.js');
+const { applyWebsiteFacts } = require('./website-facts.js');
 
 const DATA = path.join(__dirname, '..', 'data');
 const OSM_FILE = path.join(DATA, 'osm-places.json');
@@ -124,6 +125,7 @@ function dedupe(list) {
   let places = dedupe(osm.places.concat(web.places)).filter(p => !closed[p.id]);
   console.log('Left out', Object.keys(closed).length, 'places listed as permanently closed');
   // Photos, descriptions and extra contact details (may pin town-centre places exactly, so check for duplicates again)
+  applyWebsiteFacts(places);
   await addMedia(places);
   places = dedupe(places);
   const out = {

@@ -55,8 +55,24 @@ const ARTICLES = new Set(['the', 'and', 'of', 'a', 'an', 'at', 'co', 'ltd', 'lim
 function strictTokens(name) {
   return norm(name.replace(/\(.*?\)/g, ' ')).split(' ').filter(w => w && !ARTICLES.has(w));
 }
+// Close-ups of street furniture, interiors, transport and old pictures say little about a place
+const JUNK = /\b(drain|manhole|cover|sewer|vent|letter ?box|post ?box|bust|statue|plaque|scraper|door|doorway|sign|antenna|aerial|turbine|lobby|hallway|corridor|staircase|bank|fire station|railway|train|station|bus|bollard|bin|lamp|hydrant|graffiti|banners?|cart|toilet|car park|map|bridge over|property advisors)\b/i;
+const OLD = /\b(1[0-8]\d\d|19[0-4]\d)s?\b/;
+// Words that only name the town or county (a "Dog park, Carlow" photo of Carlow isn't a photo of the dog park)
+function placeWords(p) {
+  const t = p.t || {};
+  return new Set(norm([t['addr:town'], t['addr:city'], t['addr:village'], t['addr:suburb'], t['addr:county']].filter(Boolean).join(' ')
+    .replace(/\b(co|county|city|district|dublin \d+)\b/gi, ' ')).split(' ').filter(Boolean));
+}
 function photoFits(p, title) {
-  if (LOOSE.test(p.c)) return titleMatches(keyTokens(p.n), title);
+  if (JUNK.test(title) || OLD.test(title)) return false;
+  if (p.c === 'dogpark' && /\bdog ?park\b/i.test(title)) return true;
+  if (LOOSE.test(p.c)) {
+    const town = placeWords(p);
+    const tk = keyTokens(p.n).filter(w => !town.has(w));
+    if (!tk.length) return false;
+    return titleMatches(keyTokens(p.n), title) && tk.some(w => norm(title).split(' ').includes(w));
+  }
   const t = strictTokens(p.n);
   if (!t.length || t.join('').length < 4) return false;
   if (titleMatches(t, title, true)) return true;

@@ -1,0 +1,2 @@
+# Places to leave out of the app even though OpenStreetMap lists them. One id per line, then a note.
+n4038617193  Botanic, Belfast: not a dog-friendly place (removed at John's request, 4 Nov 2026)

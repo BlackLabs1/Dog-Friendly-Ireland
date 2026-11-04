@@ -122,7 +122,11 @@ function dedupe(list) {
   const web = await buildWebPlaces(byId, await loadSuggestions());
   const closedFile = path.join(DATA, 'closed.json');
   const closed = fs.existsSync(closedFile) ? JSON.parse(fs.readFileSync(closedFile, 'utf8')) : {};
-  let places = dedupe(osm.places.concat(web.places)).filter(p => !closed[p.id]);
+  // data/removed.txt: places removed by hand (one id per line, then a note)
+  const removedFile = path.join(DATA, 'removed.txt');
+  const removed = new Set(fs.existsSync(removedFile) ? fs.readFileSync(removedFile, 'utf8').split('\n').map(l => l.trim().split(/\s+/)[0]).filter(id => id && !id.startsWith('#')) : []);
+  let places = dedupe(osm.places.concat(web.places)).filter(p => !closed[p.id] && !removed.has(p.id));
+  console.log('Left out', removed.size, 'places removed by hand');
   console.log('Left out', Object.keys(closed).length, 'places listed as permanently closed');
   // Photos, descriptions and extra contact details (may pin town-centre places exactly, so check for duplicates again)
   applyWebsiteFacts(places);

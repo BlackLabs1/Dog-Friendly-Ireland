@@ -70,7 +70,9 @@ function hoursFromSpec(spec) {
 }
 function hoursFromText(h) {
   // schema.org openingHours strings already use the OpenStreetMap style: "Mo-Fr 09:00-17:00"
-  const list = [].concat(h || []).map(String).filter(x => /^(Mo|Tu|We|Th|Fr|Sa|Su)[A-Za-z,\- ]*\d{1,2}:\d{2}-\d{1,2}:\d{2}$/.test(x.trim()));
+  const long = x => x.replace(/\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/gi, d => DAY[d.toLowerCase()])
+    .replace(/^Mo,Tu,We,Th,Fr,Sa,Su\b/, 'Mo-Su').replace(/^Mo,Tu,We,Th,Fr\b/, 'Mo-Fr').replace(/(\d)\s*-\s*(\d)/g, '$1-$2');
+  const list = [].concat(h || []).map(String).map(long).filter(x => /^(Mo|Tu|We|Th|Fr|Sa|Su)[A-Za-z,\- ]*\d{1,2}:\d{2}-\d{1,2}:\d{2}$/.test(x.trim()));
   return list.length ? list.join('; ') : null;
 }
 

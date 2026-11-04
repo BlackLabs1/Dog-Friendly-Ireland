@@ -1,0 +1,19 @@
+console [GroupMarkerNotSet(crbug.com/242999)!:A0301C0044260000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader flag to opt in to lower security guarantees 
+console [GroupMarkerNotSet(crbug.com/242999)!:A0601C0044260000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader flag to opt in to lower security guarantees 
+console [.WebGL-0x1f8c017f4600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+console [.WebGL-0x1f8c017f4600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+console [.WebGL-0x1f8c017f4600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+console [.WebGL-0x1f8c017f4600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+shot 1-map-ireland
+maplibre loaded: true, gl canvas: true
+shot 2-map-belfast
+failed https://tiles.openfreemap.org/planet/20261101_080013_pt/14/7922/5212.pbf net::ERR_ABORTED
+failed https://tiles.openfreemap.org/planet/20261101_080013_pt/14/7921/5212.pbf net::ERR_ABORTED
+console Expected value to be of type number, but found null instead.
+console Expected value to be of type number, but found null instead.
+console Expected value to be of type number, but found null instead.
+shot 3-place-photos
+shot 4-route
+route info: 9 min · 710 m on foot | go: geo:0,0?q=54.60158,-5.926456(The%20Dirty%20Onion)
+shot 5-walking
+shot 6-place-failte

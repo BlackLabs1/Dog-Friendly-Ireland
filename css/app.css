@@ -137,6 +137,33 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
   white-space: nowrap;
 }
 .area-list:empty { display: none; }
+.routing .area-list, .routing .map-status { display: none; }
+.leaflet-control-layers { border: 0 !important; box-shadow: var(--shadow) !important; background: var(--surface); color: var(--ink); border-radius: 10px !important; }
+.leaflet-control-layers-expanded { padding: 8px 12px; font-size: .92rem; }
+.leaflet-control-layers label { padding: 4px 0; }
+.route {
+  position: absolute; z-index: 460; left: 10px; right: 10px; bottom: 12px; max-width: 420px; margin: 0 auto;
+  background: var(--surface); color: var(--ink); border-radius: var(--r); box-shadow: var(--shadow); padding: 12px 14px 10px;
+}
+.route-head { display: flex; align-items: flex-start; gap: 8px; }
+.route-head p { margin: 2px 0 0; flex: 1; min-width: 0; font-size: .95rem; overflow-wrap: anywhere; }
+.route-x { border: 0; background: transparent; color: var(--ink-2); width: 36px; height: 36px; margin: -6px -6px 0 0; display: grid; place-items: center; cursor: pointer; }
+.route-x svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.route-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+.route-modes button {
+  border: 1.5px solid var(--line); background: transparent; color: var(--ink); border-radius: 999px; padding: 7px 0; font: inherit; font-size: .9rem; cursor: pointer;
+}
+.route-modes button[aria-pressed="true"] { background: var(--field); border-color: var(--field); color: var(--field-ink); font-weight: 700; }
+.route-info { margin: 10px 0 0; font-size: 1rem; min-height: 1.4em; }
+.route-info strong { font-size: 1.15rem; }
+.route-approx { margin: 6px 0 0; font-size: .82rem; color: var(--ink-2); }
+.route-go {
+  display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; padding: 12px; border-radius: 12px;
+  background: var(--field); color: var(--field-ink); font-weight: 700; text-decoration: none;
+}
+.route-go svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.route-note { margin: 8px 0 0; font-size: .74rem; color: var(--ink-2); }
+.route-note a { color: var(--ink-2); }
 
 /* ---------- Lists ---------- */
 .list-head {
@@ -261,8 +288,18 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .policy p { margin: 3px 0 0; font-size: .92rem; color: var(--ink-2); }
 .policy p.extra { color: var(--ink); }
 
-.photo { margin: 14px 0 0; border-radius: var(--r); overflow: hidden; background: var(--surface-2); aspect-ratio: 16 / 10; max-width: 100%; }
-.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gallery { display: flex; gap: 10px; overflow-x: auto; margin: 14px -2px 0; padding: 0 2px 4px; scroll-snap-type: x mandatory; }
+.gallery figure { margin: 0; flex: 0 0 82%; scroll-snap-align: start; min-width: 0; }
+.gallery.one figure { flex-basis: 100%; }
+.gallery a { display: block; position: relative; border-radius: var(--r); overflow: hidden; background: var(--surface-2); aspect-ratio: 16 / 10; }
+.gallery img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gallery a.video::after {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%;
+  background: rgba(0,0,0,.55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='white' d='M8 5v14l11-7z'/%3E%3C/svg%3E") center / 28px no-repeat;
+}
+.gallery figcaption { font-size: .74rem; color: var(--ink-2); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet-top .dot.logo { background: #fff; border: 1px solid var(--line); overflow: hidden; }
+.sheet-top .dot.logo img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
 
 .actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
 .act {

@@ -14,6 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -39,6 +40,25 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
       </button>
       <button class="area-list" id="area-list" type="button"></button>
+      <div class="route" id="route" role="region" aria-label="Route" hidden>
+        <div class="route-head">
+          <p>Route to <strong id="route-to"></strong></p>
+          <button class="route-x" id="route-close" type="button" aria-label="Close route">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="route-modes" role="group" aria-label="How are you travelling?">
+          <button type="button" data-mode="foot" aria-pressed="true">Walk</button>
+          <button type="button" data-mode="bike" aria-pressed="false">Cycle</button>
+          <button type="button" data-mode="car" aria-pressed="false">Drive</button>
+        </div>
+        <p class="route-info" id="route-info" aria-live="polite"></p>
+        <p class="route-approx" id="route-approx" hidden>This place is only known to be in the town, so the route goes to the town centre. Navigation searches for it by name.</p>
+        <a class="route-go" id="route-go" href="#" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 18-8-8 18-2-8z"/></svg>Start navigation
+        </a>
+        <p class="route-note">Opens your maps app for turn-by-turn directions. Route preview by <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener">FOSSGIS</a> using OpenStreetMap.</p>
+      </div>
     </section>
 
     <section class="view view-list" id="view-list" aria-label="List" hidden>
@@ -134,7 +154,7 @@
         <h3>Always check first</h3>
         <p>Dog policies change. If it matters, ring ahead, especially for accommodation, and bring a lead.</p>
 
-        <p class="credit">Map data © OpenStreetMap contributors, available under the Open Database Licence.</p>
+        <p class="credit">Map data © OpenStreetMap contributors, available under the Open Database Licence. Street map by OpenFreeMap and OpenMapTiles; walking map by OpenTopoMap (CC BY-SA). Routes by FOSSGIS. Photos from Wikimedia Commons, credited on each photo under its own licence. Some photos, phone numbers and websites from Fáilte Ireland open data (CC BY 4.0). Descriptions from Wikipedia (CC BY-SA) where shown.</p>
       </div>
     </section>
   </main>
@@ -174,6 +194,8 @@
 </svg>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
 <script src="js/config.js"></script>
 <script src="js/places.js"></script>
 <script src="js/app.js"></script>

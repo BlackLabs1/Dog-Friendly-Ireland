@@ -53,7 +53,7 @@
     'opening_hours', 'phone', 'contact:phone', 'mobile', 'contact:mobile', 'email', 'contact:email',
     'website', 'contact:website', 'url', 'facebook', 'contact:facebook', 'instagram', 'contact:instagram',
     'description', 'cuisine', 'outdoor_seating', 'wheelchair', 'operator', 'brand', 'check_date',
-    'dog', 'dog:conditional', 'dog:note', 'dog:description', 'image', 'wikimedia_commons', 'wikidata',
+    'dog', 'dog:conditional', 'dog:note', 'dog:description', 'image', 'wikimedia_commons', 'wikidata', 'wikipedia',
     'amenity', 'shop', 'tourism', 'leisure', 'natural', 'historic', 'stars', 'takeaway', 'fee',
     'internet_access', 'level', 'healthcare', 'social_facility', 'veterinary', 'emergency'
   ];

@@ -160,16 +160,29 @@
   // ---------- map ----------
   function initMap() {
     if (!window.L) { $('map-status').textContent = 'Map unavailable offline. Use the List tab.'; return; }
-    map = L.map('map', { zoomControl: true, preferCanvas: true, attributionControl: true }).setView(IRELAND.center, IRELAND.zoom);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    map = L.map('map', { zoomControl: true, preferCanvas: true, attributionControl: true, maxZoom: 19 }).setView(IRELAND.center, IRELAND.zoom);
+    var osmCredit = 'Data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+    // Street map: OpenFreeMap (free, no key). Falls back to OpenStreetMap's own tiles if the device can't draw vector maps.
+    var street = window.maplibregl && L.maplibreGL && webgl()
+      ? L.maplibreGL({ style: 'https://tiles.openfreemap.org/styles/liberty',
+          attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> ' + osmCredit })
+      : L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osmCredit });
+    var walking = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      subdomains: 'abc', maxZoom: 17,
+      attribution: 'Style © <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a> (CC BY-SA), SRTM · ' + osmCredit
+    });
+    var layers = { 'Street map': street, 'Walking (hills and trails)': walking };
+    (layers[recall('dfi-layer', '')] || street).addTo(map);
+    L.control.layers(layers, null, { position: 'topright' }).addTo(map);
+    map.on('baselayerchange', function (e) { store('dfi-layer', e.name); });
     markerLayer = L.layerGroup().addTo(map);
     map.on('moveend', debounce(updateAreaButton, 150));
     var last = recall('dfi-view', null);
     if (last && last.c) map.setView(last.c, last.z);
     map.on('moveend', function () { var c = map.getCenter(); store('dfi-view', { c: [c.lat, c.lng], z: map.getZoom() }); });
+  }
+  function webgl() {
+    try { var c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; }
   }
   function drawMarkers(list) {
     if (!map) return;
@@ -283,10 +296,15 @@
     }
     return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
   }
-  function directionsUrl(p) {
+  function directionsUrl(p, mode) {
     // Places only known to be in a town (not pinned exactly) are routed by name instead of coordinates
-    var dest = p.w && p.w.a ? p.n + ', ' + [town(p.t), p.t['addr:county']].filter(Boolean).join(', ') : p.la + ',' + p.lo;
-    return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(dest);
+    var byName = p.w && p.w.a, named = p.n + ', ' + [town(p.t), p.t['addr:county']].filter(Boolean).join(', ');
+    // On Android, a geo: link lets the person choose any maps app they have (Google Maps, Waze, OsmAnd…)
+    if (/Android/i.test(navigator.userAgent)) {
+      return 'geo:0,0?q=' + (byName ? encodeURIComponent(named) : p.la + ',' + p.lo + '(' + encodeURIComponent(p.n) + ')');
+    }
+    var tm = { foot: 'walking', bike: 'bicycling', car: 'driving' }[mode] || '';
+    return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(byName ? named : p.la + ',' + p.lo) + (tm ? '&travelmode=' + tm : '');
   }
   function osmUrl(p) {
     var type = { n: 'node', w: 'way', r: 'relation' }[p.id.charAt(0)];
@@ -307,6 +325,32 @@
     return null;
   }
 
+  // ---------- photos and descriptions (data/media.json, loaded the first time a place is opened) ----------
+  var media = null, mediaLoading = false;
+  function loadMedia() {
+    if (media || mediaLoading) return;
+    mediaLoading = true;
+    fetch('data/media.json').then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; }).then(function (m) {
+      media = m || {}; mediaLoading = false;
+      if (state.sheetId && media[state.sheetId]) {
+        var s = $('sheet'), top = s.scrollTop, p = state.byId[state.sheetId] || state.saved[state.sheetId];
+        if (p) { s.innerHTML = placeHtml(p); s.scrollTop = top; }
+      }
+    });
+  }
+  function galleryHtml(p) {
+    var md = media && media[p.id], list = (md && md.ph) || [];
+    var own = photoUrl(p.t);
+    if (!list.length && own) list = [{ u: own, f: own, s: host(own), a: '', l: '' }];
+    if (!list.length) return '';
+    return '<div class="gallery' + (list.length === 1 ? ' one' : '') + '">' + list.map(function (x) {
+      var credit = [x.a ? (x.v ? 'Video: ' : 'Photo: ') + x.a : '', x.l, x.s].filter(Boolean).join(' · ');
+      return '<figure><a href="' + esc(x.f) + '" target="_blank" rel="noopener"' + (x.v ? ' class="video" aria-label="Play video"' : '') + '>' +
+        '<img src="' + esc(x.u) + '" alt="' + (x.v ? 'Video of ' : 'Photo of ') + esc(p.n) + '" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest(\'figure\').remove()"></a>' +
+        '<figcaption>' + esc(credit) + '</figcaption></figure>';
+    }).join('') + '</div>';
+  }
+
   function fact(icon, label, html) {
     return '<div class="fact">' + ico(icon) + '<div><dt>' + esc(label) + '</dt><dd>' + html + '</dd></div></div>';
   }
@@ -314,7 +358,9 @@
   function placeHtml(p) {
     var t = p.t, c = P.CAT_BY_ID[p.c], pol = P.POLICIES[p.d];
     var h = '<div class="grabber"></div><div class="sheet-in" style="--dot:' + c.color + '">';
-    h += '<div class="sheet-top"><span class="dot"><svg viewBox="0 0 64 64"><use href="#paw"/></svg></span>' +
+    var logo = media && media[p.id] && media[p.id].lg;
+    h += '<div class="sheet-top">' + (logo ? '<span class="dot logo"><img src="' + esc(logo.u) + '" alt="" referrerpolicy="no-referrer"></span>'
+      : '<span class="dot"><svg viewBox="0 0 64 64"><use href="#paw"/></svg></span>') +
       '<div class="sheet-title"><h2 id="sheet-title">' + esc(p.n) + '</h2><p>' + esc([p.k, town(t) || t['addr:county']].filter(Boolean).join(' · ')) +
       (state.user ? ' · ' + fmtKm(km(state.user, [p.la, p.lo])) + ' away' : '') + '</p></div>' +
       '<button class="close" type="button" id="close" aria-label="Close">' + ico('close') + '</button></div>';
@@ -323,15 +369,14 @@
     h += '<div class="policy p-' + p.d + '"><strong>' + esc(pol.label) + '</strong><p>' + esc(pol.note) + '</p>' +
       extra.map(function (e) { return '<p class="extra">' + esc(e) + '</p>'; }).join('') + '</div>';
 
-    var ph = photoUrl(t);
-    if (ph) h += '<figure class="photo"><img src="' + esc(ph) + '" alt="Photo of ' + esc(p.n) + '" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></figure>';
+    h += galleryHtml(p);
 
 
     var phone = t.phone || t['contact:phone'] || t.mobile || t['contact:mobile'];
     var site = t.website || t['contact:website'] || t.url;
     var saved = !!state.saved[p.id];
     h += '<div class="actions">' +
-      '<a class="act" href="' + esc(directionsUrl(p)) + '" target="_blank" rel="noopener">' + ico('nav') + 'Directions</a>' +
+      '<button class="act" type="button" id="act-route">' + ico('nav') + 'Directions</button>' +
       (phone ? '<a class="act" href="' + esc(telHref(phone.split(';')[0])) + '">' + ico('phone') + 'Call</a>'
              : (site ? '<a class="act" href="' + esc(url(site)) + '" target="_blank" rel="noopener">' + ico('web') + 'Website</a>'
                      : '<button class="act" type="button" id="act-osm">' + ico('pin') + 'Map</button>')) +
@@ -353,7 +398,9 @@
       fb ? '<a href="' + esc(social(fb, 'https://www.facebook.com/')) + '" target="_blank" rel="noopener">Facebook</a>' : '',
       ig ? '<a href="' + esc(social(ig, 'https://www.instagram.com/')) + '" target="_blank" rel="noopener">Instagram</a>' : ''
     ].filter(Boolean).join(' · '));
+    var md = media && media[p.id];
     if (t.description) facts += fact('info', 'About', esc(t.description));
+    else if (md && md.ds) facts += fact('info', 'About', esc(md.ds.x) + ' <a href="' + esc(md.ds.h) + '" target="_blank" rel="noopener">' + esc(md.ds.s) + '</a>');
     if (t.cuisine) facts += fact('food', 'Food', esc(t.cuisine.split(/\s*;\s*/).map(function (x) { return cap(x.replace(/_/g, ' ')); }).join(', ')));
     var feats = [];
     if (t.outdoor_seating === 'yes') feats.push('Outdoor seating');
@@ -391,8 +438,14 @@
 
   function openPlace(id, quiet) {
     var p = state.byId[id] || state.saved[id];
-    if (!p) { if (!quiet && state.places.length) toast('That place is no longer listed'); return; }
+    if (!p) {
+      if (!state.places.length) { state.sheetId = id; return; }   // places still loading: open it once they arrive
+      state.sheetId = null;
+      if (!quiet) toast('That place is no longer listed');
+      return;
+    }
     state.sheetId = id;
+    loadMedia();
     var s = $('sheet');
     s.innerHTML = placeHtml(p);
     s.hidden = false; $('backdrop').hidden = false;
@@ -438,8 +491,8 @@
   }
 
   // ---------- location ----------
-  function locate() {
-    if (!navigator.geolocation) { toast('Location is not available on this device'); return; }
+  function whereAmI(done, fail) {
+    if (!navigator.geolocation) { fail('Location is not available on this device'); return; }
     var b = $('locate'); b.classList.add('busy');
     navigator.geolocation.getCurrentPosition(function (pos) {
       b.classList.remove('busy');
@@ -447,13 +500,73 @@
       if (map) {
         if (userMarker) map.removeLayer(userMarker);
         userMarker = L.circleMarker(state.user, { radius: 8, weight: 3, color: '#ffffff', fillColor: '#1c7cd6', fillOpacity: 1 }).addTo(map);
-        map.setView(state.user, 14);
       }
-      if (state.view === 'list') renderList();
+      done();
     }, function (err) {
       b.classList.remove('busy');
-      toast(err.code === 1 ? 'Allow location access in your browser settings to see places near you' : 'Could not find your location. Try again outside.');
+      fail(err.code === 1 ? 'Allow location access in your browser settings to see places near you' : 'Could not find your location. Try again outside.');
     }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  }
+  function locate() {
+    whereAmI(function () {
+      if (map) map.setView(state.user, 14);
+      if (state.view === 'list') renderList();
+    }, toast);
+  }
+
+  // ---------- route preview (OpenStreetMap routing by FOSSGIS: free, at most one request a second) ----------
+  var trip = null, routeLine = null, lastRouteAt = 0;
+  var MODES = { foot: 'Walk', bike: 'Cycle', car: 'Drive' };
+  function fmtTime(s) {
+    var m = Math.max(1, Math.round(s / 60));
+    return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60 ? m % 60 + ' min' : '');
+  }
+  function startRoute(id) {
+    var p = state.byId[id] || state.saved[id]; if (!p) return;
+    trip = { p: p, mode: recall('dfi-mode', 'foot') };
+    location.hash = 'map';
+    showRoute();
+    if (state.user) getRoute();
+    else {
+      $('route-info').textContent = 'Finding your location…';
+      whereAmI(getRoute, function (msg) { $('route-info').textContent = msg + '. You can still start navigation below.'; });
+    }
+  }
+  function showRoute() {
+    var p = trip.p, r = $('route');
+    r.hidden = false;
+    $('route-to').textContent = p.n;
+    $('route-go').href = directionsUrl(p, trip.mode);
+    r.querySelectorAll('[data-mode]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.mode === trip.mode); });
+    $('route-approx').hidden = !(p.w && p.w.a);
+    $('app').classList.add('routing');
+  }
+  function getRoute() {
+    if (!trip || !state.user || !map) return;
+    var p = trip.p, mode = trip.mode, info = $('route-info');
+    var wait = 1100 - (Date.now() - lastRouteAt);
+    if (wait > 0) { setTimeout(getRoute, wait); return; }
+    lastRouteAt = Date.now();
+    info.textContent = 'Working out the route…';
+    var u = 'https://routing.openstreetmap.de/routed-' + mode + '/route/v1/driving/' +
+      state.user[1].toFixed(6) + ',' + state.user[0].toFixed(6) + ';' + p.lo.toFixed(6) + ',' + p.la.toFixed(6) + '?overview=full&geometries=geojson';
+    fetch(u).then(function (r) { return r.json(); }).then(function (j) {
+      if (!trip || trip.p !== p || trip.mode !== mode) return;
+      var rt = j.routes && j.routes[0];
+      if (!rt) throw new Error(j.code || 'no route');
+      if (routeLine) map.removeLayer(routeLine);
+      routeLine = L.geoJSON(rt.geometry, { interactive: false, style: { color: '#1c7cd6', weight: 6, opacity: .85, lineCap: 'round' } }).addTo(map);
+      map.fitBounds(routeLine.getBounds(), { padding: [40, 40], paddingBottomRight: [40, $('route').offsetHeight + 30] });
+      info.innerHTML = '<strong>' + fmtTime(rt.duration) + '</strong> · ' + fmtKm(rt.distance / 1000) + ' ' + MODES[mode].toLowerCase().replace('walk', 'on foot').replace('cycle', 'by bike').replace('drive', 'by car');
+    }).catch(function () {
+      if (trip && trip.p === p) info.textContent = 'Could not get a route right now. You can still start navigation below.';
+    });
+  }
+  function endRoute() {
+    trip = null;
+    $('route').hidden = true;
+    $('app').classList.remove('routing');
+    if (routeLine && map) { map.removeLayer(routeLine); routeLine = null; }
   }
 
   // ---------- routing ----------
@@ -500,6 +613,10 @@
       if (card) { location.hash = 'place-' + card.dataset.id; return; }
       if (e.target.closest('#close')) { closeToView(); return; }
       if (e.target.closest('#act-save')) { toggleSave(state.sheetId); return; }
+      if (e.target.closest('#act-route')) { startRoute(state.sheetId); return; }
+      var md = e.target.closest('[data-mode]');
+      if (md && trip) { trip.mode = md.dataset.mode; store('dfi-mode', trip.mode); showRoute(); getRoute(); return; }
+      if (e.target.closest('#route-close')) { endRoute(); return; }
       if (e.target.closest('#act-share')) { share(state.sheetId); return; }
       if (e.target.closest('#act-osm')) { window.open(osmUrl(state.byId[state.sheetId]), '_blank', 'noopener'); return; }
       var cp = e.target.closest('[data-copy]');

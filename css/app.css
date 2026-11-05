@@ -311,7 +311,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .sheet-top .dot.logo { background: #fff; border: 1px solid var(--line); overflow: hidden; }
 .sheet-top .dot.logo img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
 
-.actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+.actions { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 14px; }
 .act {
   display: grid; justify-items: center; gap: 4px; padding: 10px 4px; border-radius: 12px;
   background: var(--surface); border: 1px solid var(--line); color: var(--ink); text-decoration: none;

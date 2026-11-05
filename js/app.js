@@ -375,7 +375,7 @@
       '<button class="act" type="button" id="act-route">' + ico('nav') + 'Directions</button>' +
       (phone ? '<a class="act" href="' + esc(telHref(phone.split(';')[0])) + '">' + ico('phone') + 'Call</a>'
              : (site ? '<a class="act" href="' + esc(url(site)) + '" target="_blank" rel="noopener">' + ico('web') + 'Website</a>'
-                     : '<button class="act" type="button" id="act-osm">' + ico('pin') + 'Map</button>')) +
+ : '')) +
       '<button class="act" type="button" id="act-save" aria-pressed="' + saved + '">' + ico('save') + (saved ? 'Saved' : 'Save') + '</button>' +
       '<button class="act" type="button" id="act-share">' + ico('share') + 'Share</button></div>';
 
@@ -663,17 +663,6 @@
       saveError(err); if (b) { b.disabled = false; b.textContent = 'Delete this place'; }
     });
   }
-  // Closes the place (like X) and shows it on the main map, circled
-  function showOnMap(id) {
-    var p = state.byId[id] || state.saved[id];
-    window.addEventListener('hashchange', function () {
-      if (!map || !p) return;
-      map.setView([p.la, p.lo], Math.max(map.getZoom(), 16), { animate: false });
-      if (selectedMarker) map.removeLayer(selectedMarker);
-      selectedMarker = L.circleMarker([p.la, p.lo], { radius: 13, weight: 3, color: P.CAT_BY_ID[p.c].color, fill: false }).addTo(map);
-    }, { once: true });
-    location.hash = 'map';
-  }
   function saveMove() {
     if (!moving || !movePin) return;
     var p = moving, ll = movePin.getLatLng(), la = Math.round(ll.lat * 1e6) / 1e6, lo = Math.round(ll.lng * 1e6) / 1e6;
@@ -740,7 +729,6 @@
       if (md && trip) { trip.mode = md.dataset.mode; store('dfi-mode', trip.mode); showRoute(); getRoute(); return; }
       if (e.target.closest('#route-close')) { endRoute(); return; }
       if (e.target.closest('#act-share')) { share(state.sheetId); return; }
-      if (e.target.closest('#act-osm')) { showOnMap(state.sheetId); return; }
       if (e.target.closest('#act-delete')) { deletePlace(state.sheetId); return; }
       var cp = e.target.closest('[data-copy]');
       if (cp) { copy(cp.dataset.copy); return; }

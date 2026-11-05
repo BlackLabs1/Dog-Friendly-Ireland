@@ -39,4 +39,12 @@ w50903382 https://commons.wikimedia.org/wiki/File:Johnnie_Fox%27s_Pub,_Wicklow_-
 w50903382 https://commons.wikimedia.org/wiki/File:Johnnie_Fox%27s_Pub,_Wicklow_-_panoramio_(1).jpg
 w22569176 https://commons.wikimedia.org/wiki/File:Killiney_hill,_looking_south_-_geograph.org.uk_-_665933.jpg
 w22569176 https://commons.wikimedia.org/wiki/File:Killiney_hill,_looking_north_-_geograph.org.uk_-_665923.jpg
-w22569176 https://commons.wikimedia.org/wiki/File:Aircraft_Comms_Antenna,_Killiney_Hill_-_panoramio.jpg
+w22569176 https://commons.wikimedia.org/wiki/File:Aircraft_Comms_Antenna,_Killiney_Hill_-_panoramio.jpg# Marked wrong by John on photos.html, 5 Nov 2026
+w200079634 https://commons.wikimedia.org/wiki/File:Ashford_Castle,Cong,Co.Mayo,Ireland_-_panoramio_(3).jpg
+w50903382 https://commons.wikimedia.org/wiki/File:Johnnie_Fox%27s_Pub_-_panoramio_(1).jpg
+x1fzhsd4 https://data.gov.ie/dataset/tourism-activities-and-attractions
+w746942791 https://commons.wikimedia.org/wiki/File:Tram_on_Strand_Road,_Sandymount,_Dublin.jpg
+n11335830778 https://commons.wikimedia.org/wiki/File:Ironwork,_St_George%27s_Market_Belfast_-_geograph.org.uk_-_2683124.jpg
+n11335830778 https://commons.wikimedia.org/wiki/File:Ironwork,_St_George%27s_Market_Belfast_-_geograph.org.uk_-_2683135.jpg
+w256624411 https://commons.wikimedia.org/wiki/File:Fumbally_Lane_1.jpg
+w533520981 https://commons.wikimedia.org/wiki/File:The_Shambles_Yard_(2)_-_geograph.org.uk_-_4572656.jpg

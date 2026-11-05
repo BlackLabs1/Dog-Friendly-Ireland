@@ -41,7 +41,7 @@ const GENERIC = new Set(('the and of a an at on in by dog dogs park parks cafe c
   'cottage cottages lodge lodges apartments self catering holiday homes small large enclosure area run off lead leash').split(' '));
 // Single words too common to identify a place on their own
 const VAGUE = new Set(('bridge river beach lake castle church harbour harbor pier station square street road market garden gardens ' +
-  'wood woods forest hill view mill quay strand bay point head island court hall abbey tower green field fields').split(' '));
+  'wood woods forest hill view mill quay strand bay point head island court hall abbey tower green field fields yard corner lane').split(' '));
 function keyTokens(name) {
   const name2 = name.replace(/\(.*?\)/g, ' ').split(/,| in /)[0];   // "Dog park, Ballincollig" -> "Dog park"; "X in Y" -> "X"
   const tk = s => norm(s).split(' ').filter(w => w && !GENERIC.has(w));
@@ -75,6 +75,10 @@ function photoFits(p, title) {
   }
   const t = strictTokens(p.n);
   if (!t.length || t.join('').length < 4) return false;
+  // "The Fumbally" is not "Fumbally Lane": skip photos of a street that shares the business's name
+  const street = new RegExp('\\b' + t[t.length - 1] + ' (lane|street|st|road|rd|avenue|ave|place|terrace|square|row|quay)\\b');
+  const ownStreet = /\b(lane|street|road|avenue|place|terrace|square|row|quay|hill)\b/.test(norm(p.n));
+  if (!ownStreet && street.test(norm(title))) return false;
   if (titleMatches(t, title, true)) return true;
   // Pubs are often photographed as "The Sunflower" rather than "Sunflower Bar"
   const short = /^(bar|pub|tavern|lounge)$/.test(t[t.length - 1]) ? t.slice(0, -1) : null;

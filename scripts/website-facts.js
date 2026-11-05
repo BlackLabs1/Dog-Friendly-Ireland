@@ -150,6 +150,12 @@ function facts(pages) {
         const a = b.address; f.address = [a.streetAddress, a.addressLocality, a.postalCode].filter(Boolean).join(', ').slice(0, 160);
       }
     }
+    // The image the website publishes for link previews (og:image / twitter:image), from the home page
+    if (!f.image && pg === pages[0]) {
+      const m = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image)["'][^>]*content=["']([^"']+)["']/i) ||
+        html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/i);
+      if (m) { try { const u = new URL(m[1].replace(/&amp;/g, '&'), pg.url).href; if (/^https:/.test(u) && !/\.svg(\?|$)|logo|favicon|icon/i.test(u)) f.image = u; } catch (e) {} }
+    }
     const l = links(html, pg.url);
     if (!f.menu && l.menu) f.menu = l.menu;
     if (!f.facebook && l.facebook) f.facebook = l.facebook;
@@ -171,10 +177,10 @@ async function main() {
     const site = p.t.website || p.t['contact:website'] || p.t.url;
     if (!site || SKIP.test(site)) continue;
     const prev = old[p.id];
-    if (prev && now - Date.parse(prev.checked) < REFRESH_DAYS * 864e5) { out[p.id] = prev; continue; }
+    if (prev && prev.v === 2 && now - Date.parse(prev.checked) < REFRESH_DAYS * 864e5) { out[p.id] = prev; continue; }
     const home = await page(/^https?:/i.test(site) ? site : 'https://' + site);
     checked++;
-    const rec = { checked: new Date().toISOString().slice(0, 10), site: home ? home.url : site };
+    const rec = { v: 2, checked: new Date().toISOString().slice(0, 10), site: home ? home.url : site };
     if (home) {
       reached++;
       const pages = [home];
@@ -188,7 +194,7 @@ async function main() {
   }
   fs.writeFileSync(OUT, JSON.stringify(out));
   const v = Object.values(out), c = k => v.filter(x => x[k]).length;
-  console.log(`Websites: ${checked} read now (${reached} reachable), ${v.length} on file. Found phone ${c('phone')}, email ${c('email')}, hours ${c('hours')}, menu ${c('menu')}, Facebook ${c('facebook')}, Instagram ${c('instagram')}, says something about dogs ${c('dogs')}.`);
+  console.log(`Websites: ${checked} read now (${reached} reachable), ${v.length} on file. Found phone ${c('phone')}, email ${c('email')}, hours ${c('hours')}, menu ${c('menu')}, Facebook ${c('facebook')}, Instagram ${c('instagram')}, says something about dogs ${c('dogs')}, share image ${c('image')}.`);
 }
 
 // "+35312345678" -> "+353 1 234 5678"; "02890123456" -> "+44 28 9012 3456"

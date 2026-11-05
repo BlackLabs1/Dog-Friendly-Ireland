@@ -188,6 +188,9 @@ async function addMedia(places, log = console.log) {
   let looked = 0, withPhotos = 0, fiMatched = 0, fiPhones = 0, fiSites = 0, moved = 0;
 
   const fi = await failte(log);
+  const SF = path.join(DATA, 'website-facts.json');
+  const siteFacts = fs.existsSync(SF) ? JSON.parse(fs.readFileSync(SF, 'utf8')) : {};
+  let ownPhotos = 0;
   for (const p of places) {
     if (p.u) continue;
     const m = {};
@@ -200,6 +203,13 @@ async function addMedia(places, log = console.log) {
       if (f.tel && !(t.phone || t['contact:phone'] || t.mobile)) { t['contact:phone'] = f.tel; fiPhones++; }
       if (f.url && /^https?:\/\//.test(f.url) && !(t.website || t['contact:website'] || t.url)) { t['contact:website'] = f.url; fiSites++; }
       if (p.w && p.w.a) { p.la = f.la; p.lo = f.lo; p.w.a = 0; moved++; }
+    }
+    // The business's own share image (og:image) from its website, credited to the business and linked to its site
+    const wfi = siteFacts[p.id];
+    if (wfi && wfi.image) {
+      let host = ''; try { host = new URL(wfi.site).hostname.replace(/^www\./, ''); } catch (e) {}
+      m.ph = [{ u: wfi.image, f: wfi.site, s: 'their website', a: p.n, l: '', o: 1 }].concat(m.ph || []);
+      ownPhotos++;
     }
     // Wikimedia Commons (not for places only known to be somewhere in a town)
     if (!(p.w && p.w.a)) {
@@ -238,6 +248,7 @@ async function addMedia(places, log = console.log) {
   fs.writeFileSync(OUT, JSON.stringify(media));
   const pending = places.filter(p => !p.u && !(p.w && p.w.a) && !cache[p.id + '|' + p.n]).length;
   log(`Media: ${withPhotos} places with photos, ${Object.keys(media).length} with any media; ${looked} new photo lookups, ${pending} still to check.`);
+  log(`Business websites' own share images: ${ownPhotos}.`);
   log(`Fáilte Ireland matched ${fiMatched} places: added ${fiPhones} phone numbers, ${fiSites} websites, pinned ${moved} town-centre places exactly.`);
   return media;
 }

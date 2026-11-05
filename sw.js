@@ -31,11 +31,14 @@ self.addEventListener('fetch', function (e) {
   // The app's own files: always try the network first so changes show the next time the app opens; use the saved copy offline.
   if (url.origin === location.origin) {
     e.respondWith(caches.open(VERSION).then(function (cache) {
-      return fetch(req, { cache: 'no-cache' }).then(function (res) {
-        if (res && res.ok) cache.put(req, res.clone());
+      // (a page-load request can't be copied with new options, so fetch its address instead)
+      return fetch(url.href, { cache: 'no-cache', credentials: 'same-origin' }).then(function (res) {
+        if (res && res.ok) cache.put(url.origin + url.pathname, res.clone());
+        // Browsers refuse a redirected response for a page load; pass on its content instead
+        if (res.redirected && req.mode === 'navigate') return res.blob().then(function (b) { return new Response(b, { status: res.status, headers: res.headers }); });
         return res;
       }).catch(function () {
-        return cache.match(req, { ignoreSearch: true }).then(function (hit) { return hit || cache.match('./'); });
+        return cache.match(url.origin + url.pathname).then(function (hit) { return hit || cache.match('./'); });
       });
     }));
     return;

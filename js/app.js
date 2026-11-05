@@ -888,7 +888,7 @@
     });
   }
   function initUpdates() {
-    $('app-version').textContent = APP_VERSION;
+    if ($('app-version')) $('app-version').textContent = APP_VERSION;
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       var hadController = !!navigator.serviceWorker.controller;
       navigator.serviceWorker.addEventListener('controllerchange', function () { if (hadController) applyAppUpdate(); hadController = true; });

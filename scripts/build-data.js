@@ -31,7 +31,7 @@ async function query() {
     try {
       console.log('Querying', url);
       const res = await fetch(url, {
-        method: 'POST', body,
+        method: 'POST', body, signal: AbortSignal.timeout(240000),   // give up on a server that hangs
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'DogFriendlyIreland-data-build/1.0' }
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -45,7 +45,21 @@ async function query() {
   throw lastErr;
 }
 
+// Quick updates (when a change is pushed): reuse today's map data instead of downloading it all again.
+// The nightly run always downloads fresh data.
+const QUICK = process.env.QUICK === '1';
+function savedOsm(maxHours) {
+  try {
+    const saved = JSON.parse(fs.readFileSync(OSM_FILE, 'utf8'));
+    return Date.now() - Date.parse(saved.generated) < maxHours * 36e5 ? saved : null;
+  } catch (e) { return null; }
+}
+
 async function osmPlaces() {
+  if (QUICK) {
+    const saved = savedOsm(48);
+    if (saved) { console.log('Quick update: reusing map data from', saved.generated); return saved; }
+  }
   try {
     const json = await query();
     const places = P.fromOverpass(json);

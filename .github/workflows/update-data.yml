@@ -28,6 +28,8 @@ jobs:
       - name: Download places and locate researched ones
         id: data
         continue-on-error: true   # if the map server is busy, publish with the previous data
+        env:
+          QUICK: ${{ github.event_name == 'push' && '1' || '0' }}   # a pushed change reuses today's map data; the nightly run downloads it fresh
         run: node scripts/build-data.js
       - name: Save the updated data file
         if: steps.data.outcome == 'success'

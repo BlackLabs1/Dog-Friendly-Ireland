@@ -24,7 +24,7 @@ async function overpass(query) {
   let last;
   for (const url of P.OVERPASS_ENDPOINTS) {
     try {
-      const res = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(query),
+      const res = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(query), signal: AbortSignal.timeout(240000),
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'DogFriendlyIreland-data-build/1.0' } });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const j = await res.json();
@@ -54,7 +54,10 @@ async function chainStores(log = console.log) {
     'out center tags qt;'
   ].join('\n');
   let elements;
-  try {
+  if (process.env.QUICK === '1' && fs.existsSync(SAVED) && Date.now() - fs.statSync(SAVED).mtimeMs < 48 * 36e5) {
+    elements = JSON.parse(fs.readFileSync(SAVED, 'utf8'));
+    log('Chain stores: quick update, reusing the saved list.');
+  } else try {
     elements = (await overpass(query)).elements || [];
     fs.writeFileSync(SAVED, JSON.stringify(elements));
   } catch (e) {

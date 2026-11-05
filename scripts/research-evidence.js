@@ -92,7 +92,7 @@ async function pool(items, n, fn) {
   await Promise.all(Array.from({ length: n }, run));
 }
 
-(async () => {
+async function main() {
   const start = +(process.argv[2] || 0), count = +(process.argv[3] || 10000);
   const places = JSON.parse(fs.readFileSync(path.join(DATA, 'ireland.json'), 'utf8')).places
     .filter(p => p.w && p.w.v === 'unconfirmed').slice(start, start + count);
@@ -141,4 +141,7 @@ async function pool(items, n, fn) {
   console.log('EVIDENCE-START');
   for (let i = 0; i < blob.length; i += 8000) console.log('EV ' + blob.slice(i, i + 8000));
   console.log('EVIDENCE-END');
-})();
+}
+
+module.exports = { get, blocks, published, passages, keys, norm, decode, dogSentences, links };
+if (require.main === module) main();

@@ -9,6 +9,9 @@ on:
       count:
         description: How many places
         default: '10000'
+      script:
+        description: evidence (places' own sources and websites) or corpus (guide pages in data/research/corpus.txt)
+        default: evidence
 
 permissions:
   contents: read
@@ -22,4 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node scripts/research-evidence.js "${{ inputs.start }}" "${{ inputs.count }}"
+      - if: inputs.script == 'evidence'
+        run: node scripts/research-evidence.js "${{ inputs.start }}" "${{ inputs.count }}"
+      - if: inputs.script == 'corpus'
+        run: node scripts/research-corpus.js

@@ -78,7 +78,7 @@
       return r.json();
     }).then(function (j) {
       if (!j || !j.places || !j.places.length) throw new Error('Empty data file');
-      return { generated: j.generated, source: 'file', places: j.places };
+      return { generated: j.generated, built: j.built, source: 'file', places: j.places };
     });
   }
   function fetchOverpass() {
@@ -103,9 +103,15 @@
   function loadData() {
     return idb.get('ireland').then(function (cached) {
       if (cached && cached.places && cached.places.length) {
-        var age = (Date.now() - cached.saved) / 864e5;
-        if (age > MAX_AGE_DAYS && navigator.onLine !== false) {
-          fetchFresh().then(function (d) { d.saved = Date.now(); idb.set('ireland', d); setData(d); toast('Places updated'); }).catch(function () {});
+        // Show the saved copy straight away, then check for a newer one (the file is only re-downloaded when it has changed)
+        if (navigator.onLine !== false) {
+          fetchStatic().then(function (d) {
+            if (d.built && d.built === cached.built) return;
+            d.saved = Date.now(); idb.set('ireland', d); setData(d); toast('Places updated');
+          }).catch(function () {
+            var age = (Date.now() - cached.saved) / 864e5;
+            if (age > MAX_AGE_DAYS) fetchOverpass().then(function (d) { d.saved = Date.now(); idb.set('ireland', d); setData(d); toast('Places updated'); }).catch(function () {});
+          });
         }
         return cached;
       }

@@ -40,6 +40,19 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
       </button>
       <button class="area-list" id="area-list" type="button"></button>
+      <div class="route move" id="move" role="region" aria-label="Move marker" hidden>
+        <div class="route-head">
+          <p>Moving <strong id="move-name"></strong></p>
+          <button class="route-x" id="move-cancel" type="button" aria-label="Cancel moving">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <p class="route-info" id="move-info">Drag the pin to the right spot, or move the map under it.</p>
+        <div class="move-actions">
+          <button class="btn ghost" id="move-here" type="button">Use my location</button>
+          <button class="btn" id="move-save" type="button">Save position</button>
+        </div>
+      </div>
       <div class="route" id="route" role="region" aria-label="Route" hidden>
         <div class="route-head">
           <p>Route to <strong id="route-to"></strong></p>
@@ -169,6 +182,18 @@
 
         <h3>Always check first</h3>
         <p>Dog policies change. If it matters, ring ahead, especially for accommodation, and bring a lead.</p>
+
+        <div class="owner" id="owner-tools" hidden>
+          <h3>Owner tools</h3>
+          <p id="owner-status">Connect this device to the app's GitHub repository to move map markers. Only someone with your GitHub key can do this.</p>
+          <label class="field" for="owner-token" id="owner-token-row"><span>GitHub key</span>
+            <input id="owner-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label>
+          <div class="owner-actions">
+            <button class="btn" id="owner-connect" type="button">Connect</button>
+            <button class="btn ghost" id="owner-disconnect" type="button" hidden>Disconnect this device</button>
+          </div>
+          <p class="small">The key stays on this device and is only ever sent to GitHub.</p>
+        </div>
 
         <p class="credit">Map data © OpenStreetMap contributors, available under the Open Database Licence. Street map by OpenFreeMap and OpenMapTiles; walking map by OpenTopoMap (CC BY-SA). Routes by FOSSGIS. Photos from Wikimedia Commons, credited on each photo under its own licence. Some photos, phone numbers and websites from Fáilte Ireland open data (CC BY 4.0). Descriptions from Wikipedia (CC BY-SA) where shown.</p>
       </div>

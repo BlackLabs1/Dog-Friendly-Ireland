@@ -76,3 +76,10 @@ The app's Suggest tab sends suggestions to a Google Form you own. Nothing appear
 4. Sheet: **File → Share → Publish to web** → choose the responses tab and **Comma-separated values (.csv)** → Publish.
    Put that link in `scripts/suggestions-url.txt`.
 5. To approve a suggestion, type **yes** in its Approved cell. It appears in the app after the next nightly update.
+
+## Moving map markers (owner only)
+Open the app at `#owner` (for example https://blacklabs1.github.io/Dog-Friendly-Ireland/#owner), paste a GitHub
+fine-grained personal access token that can write *Contents* of this repository only, and tap **Connect**.
+Each place then shows **Move this marker**: drag the pin (or use your current location) and tap **Save position**.
+The move is saved to `data/moves.csv` and published by the quick update in about a minute.
+The token is kept only on that device and sent only to GitHub.

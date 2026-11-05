@@ -154,6 +154,21 @@ function dedupe(list) {
   applyWebsiteFacts(places);
   await addMedia(places);
   places = dedupe(places);
+  // data/moves.csv: markers moved by the owner in the app (the latest move of each place wins)
+  const movesFile = path.join(DATA, 'moves.csv');
+  if (fs.existsSync(movesFile)) {
+    const { parseCsv } = require('./web-places.js');
+    const moves = {};
+    parseCsv(fs.readFileSync(movesFile, 'utf8')).forEach(m => { if (m.id && +m.lat && +m.lon) moves[m.id] = m; });
+    let moved = 0;
+    places.forEach(p => {
+      const m = moves[p.id]; if (!m) return;
+      p.la = +(+m.lat).toFixed(6); p.lo = +(+m.lon).toFixed(6);
+      if (p.w) p.w.a = 0;
+      moved++;
+    });
+    console.log('Moved', moved, 'markers by hand');
+  }
   const out = {
     generated: osm.generated,
     built: new Date().toISOString(),

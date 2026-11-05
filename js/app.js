@@ -442,9 +442,10 @@
       '<div><strong>See photos & reviews on Google Maps</strong><span>Opens in your Google Maps app</span></div></a>';
 
     var webOnly = p.w && 'a' in p.w && !/^[nwr]\d/.test(p.id);
+    var ownerMove = owner.token ? '<br><button class="btn ghost owner-move" type="button" id="act-move">Move this marker</button>' : '';
     h += '<p class="fix">' + (t.check_date ? 'Details last checked ' + esc(fmtDate(t.check_date)) + '. ' : '') +
       (webOnly ? 'Something wrong or out of date? <a href="' + esc(reportUrl(p)) + '" target="_blank" rel="noopener">Report it</a>, or <a href="' + esc(osmUrl(p)) + '" target="_blank" rel="noopener">add it to OpenStreetMap</a>.'
-               : 'Something wrong or missing? <a href="' + esc(osmUrl(p)) + '" target="_blank" rel="noopener">Fix this on OpenStreetMap</a>.') + '</p>';
+               : 'Something wrong or missing? <a href="' + esc(osmUrl(p)) + '" target="_blank" rel="noopener">Fix this on OpenStreetMap</a>.') + ownerMove + '</p>';
     return h + '</div>';
   }
 
@@ -581,11 +582,101 @@
     if (routeLine && map) { map.removeLayer(routeLine); routeLine = null; }
   }
 
+  // ---------- owner tools: move markers (saved to data/moves.csv in the GitHub repository) ----------
+  var REPO = 'BlackLabs1/Dog-Friendly-Ireland', MOVES = 'data/moves.csv';
+  var owner = { token: recall('dfi-owner-token', ''), show: false };
+  var moving = null, movePin = null;
+  function gh(path, opts) {
+    opts = opts || {};
+    return fetch('https://api.github.com/repos/' + REPO + path, {
+      method: opts.method || 'GET', cache: 'no-store',
+      headers: Object.assign({ Authorization: 'Bearer ' + owner.token, Accept: 'application/vnd.github+json' },
+        opts.body ? { 'Content-Type': 'application/json' } : {}),
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+  }
+  function ownerUi() {
+    var on = !!owner.token;
+    $('owner-token-row').hidden = on; $('owner-connect').hidden = on; $('owner-disconnect').hidden = !on;
+    $('owner-status').textContent = on ? 'This device can move map markers. Open any place and tap "Move this marker".'
+      : 'Connect this device to the app\'s GitHub repository to move map markers. Only someone with your GitHub key can do this.';
+  }
+  function initOwner() {
+    ownerUi();
+    $('owner-connect').addEventListener('click', function () {
+      var key = $('owner-token').value.trim();
+      if (!key) { toast('Paste your GitHub key first'); return; }
+      owner.token = key;
+      var b = $('owner-connect'); b.disabled = true; b.textContent = 'Checking…';
+      gh('').then(function (r) { return r.ok ? r.json() : null; }).then(function (repo) {
+        if (!repo || !repo.permissions || !repo.permissions.push) throw new Error('no access');
+        store('dfi-owner-token', key); $('owner-token').value = ''; ownerUi(); toast('Connected. You can now move markers.');
+      }).catch(function () { owner.token = ''; toast('That key can\'t change the repository. Check it and try again.'); })
+        .then(function () { b.disabled = false; b.textContent = 'Connect'; });
+    });
+    $('owner-disconnect').addEventListener('click', function () {
+      owner.token = ''; try { localStorage.removeItem('dfi-owner-token'); } catch (e) {}
+      ownerUi(); toast('Disconnected');
+    });
+    $('move-cancel').addEventListener('click', endMove);
+    $('move-here').addEventListener('click', function () {
+      whereAmI(function () { if (movePin) { movePin.setLatLng(state.user); map.setView(state.user, Math.max(map.getZoom(), 18)); } }, toast);
+    });
+    $('move-save').addEventListener('click', saveMove);
+  }
+  function startMove(id) {
+    var p = state.byId[id]; if (!p || !map) return;
+    moving = p;
+    location.hash = 'map';
+    $('move-name').textContent = p.n; $('move').hidden = false; $('app').classList.add('routing');
+    $('move-info').textContent = 'Drag the pin to the right spot, or tap "Use my location" if you\'re there now.';
+    var icon = L.divIcon({ className: 'move-pin', iconSize: [34, 46], iconAnchor: [17, 44],
+      html: '<svg viewBox="0 0 34 46"><path d="M17 45S2 27 2 17a15 15 0 0 1 30 0c0 10-15 28-15 28z" fill="#d6336c" stroke="#fff" stroke-width="3"/><circle cx="17" cy="17" r="5" fill="#fff"/></svg>' });
+    movePin = L.marker([p.la, p.lo], { draggable: true, icon: icon, zIndexOffset: 1000, autoPan: true }).addTo(map);
+    map.setView([p.la, p.lo], Math.max(map.getZoom(), 18));
+  }
+  function endMove() {
+    moving = null; $('move').hidden = true; $('app').classList.remove('routing');
+    if (movePin && map) { map.removeLayer(movePin); movePin = null; }
+  }
+  function saveMove() {
+    if (!moving || !movePin) return;
+    var p = moving, ll = movePin.getLatLng(), la = Math.round(ll.lat * 1e6) / 1e6, lo = Math.round(ll.lng * 1e6) / 1e6;
+    var b = $('move-save'); b.disabled = true; b.textContent = 'Saving…';
+    var line = [p.id, la, lo, '"' + p.n.replace(/"/g, '""') + '"', new Date().toISOString().slice(0, 10)].join(',');
+    function attempt(tries) {
+      return gh('/contents/' + MOVES).then(function (r) {
+        if (!r.ok) throw new Error('read ' + r.status);
+        return r.json();
+      }).then(function (f) {
+        var text = decodeURIComponent(escape(atob(f.content.replace(/\n/g, ''))));
+        if (!/\n$/.test(text)) text += '\n';
+        text += line + '\n';
+        return gh('/contents/' + MOVES, { method: 'PUT', body: {
+          message: 'Move ' + p.n + ' on the map', sha: f.sha, content: btoa(unescape(encodeURIComponent(text))) } });
+      }).then(function (r) {
+        if (r.status === 409 && tries > 0) return attempt(tries - 1);   // saved by another device at the same moment
+        if (!r.ok) throw new Error('save ' + r.status);
+      });
+    }
+    attempt(2).then(function () {
+      p.la = la; p.lo = lo; if (p.w) p.w.a = 0;
+      if (state.meta) { idb.set('ireland', state.meta); }
+      drawMarkers(filtered());
+      toast('Saved. Everyone will see the new position in about a minute.');
+      endMove();
+    }).catch(function (err) {
+      toast(/401|403/.test(err.message) ? 'Your GitHub key has expired or lost access. Reconnect it in About.' : 'Couldn\'t save. Check your connection and try again.');
+    }).then(function () { b.disabled = false; b.textContent = 'Save position'; });
+  }
+
   // ---------- routing ----------
   function route() {
     var h = location.hash.replace(/^#/, '');
     if (h.indexOf('place-') === 0) { openPlace(h.slice(6)); return; }
     closePlace();
+    if (h === 'owner') { owner.show = true; h = 'about'; }
+    $('owner-tools').hidden = !(owner.show || owner.token);
     var v = /^(map|list|saved|suggest|about)$/.test(h) ? h : 'map';
     if (v !== 'list') state.areaOnly = false;
     state.view = v;
@@ -626,6 +717,7 @@
       if (e.target.closest('#close')) { closeToView(); return; }
       if (e.target.closest('#act-save')) { toggleSave(state.sheetId); return; }
       if (e.target.closest('#act-route')) { startRoute(state.sheetId); return; }
+      if (e.target.closest('#act-move')) { startMove(state.sheetId); return; }
       var md = e.target.closest('[data-mode]');
       if (md && trip) { trip.mode = md.dataset.mode; store('dfi-mode', trip.mode); showRoute(); getRoute(); return; }
       if (e.target.closest('#route-close')) { endRoute(); return; }
@@ -754,7 +846,7 @@
 
   // ---------- start ----------
   function start() {
-    initMap(); bind(); initSuggest(); route();
+    initMap(); bind(); initSuggest(); initOwner(); route();
     loadData().then(function (d) {
       setData(d);
       $('loading').hidden = true;

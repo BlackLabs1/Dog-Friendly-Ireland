@@ -162,6 +162,14 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
   background: var(--field); color: var(--field-ink); font-weight: 700; text-decoration: none;
 }
 .route-go svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.move-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.move-actions .btn { width: 100%; margin: 0; }
+.btn.ghost { background: transparent; color: var(--field); border: 1.5px solid var(--field); }
+.move-pin { width: 34px; height: 46px; }
+.move-pin svg { width: 34px; height: 46px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+.owner { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 8px; }
+.owner-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 6px; }
+.fix .owner-move { display: inline-block; margin-top: 8px; }
 .route-note { margin: 8px 0 0; font-size: .74rem; color: var(--ink-2); }
 .route-note a { color: var(--ink-2); }
 

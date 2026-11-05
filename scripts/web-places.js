@@ -116,7 +116,7 @@ function hash(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0)
 /* Returns { places, stats }. osmById: map of existing OSM records (by id) so matches merge instead of duplicating. */
 async function buildWebPlaces(osmById, extraRows = [], log = console.log) {
   const fileRows = fs.existsSync(CSV) ? parseCsv(fs.readFileSync(CSV, 'utf8')) : [];
-  const rows = fileRows.concat(extraRows).filter(r => r.name && r.county && r.verified !== 'closed');
+  const rows = fileRows.concat(extraRows).filter(r => r.name && r.county && r.verified !== 'closed' && r.verified !== 'no-dogs');   // no-dogs: research found dogs are not allowed
   const cache = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, 'utf8')) : {};
   const out = []; let merged = 0, looked = 0, failed = 0, approx = 0;
   for (const r of rows) {

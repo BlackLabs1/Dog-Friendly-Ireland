@@ -4,6 +4,7 @@
 
   var P = window.DFPlaces;
   var DATA_URL = 'data/ireland.json';
+  var APP_VERSION = 'dev';   // set when the app is published (see .github/workflows/update-data.yml)
   var MAX_AGE_DAYS = 7;
   var PAGE = 60;
   var IRELAND = { center: [53.45, -7.9], zoom: 7 };
@@ -739,11 +740,7 @@
     window.addEventListener('hashchange', route);
     $('refresh').addEventListener('click', function () {
       var b = $('refresh'); b.disabled = true; b.textContent = 'Checking…';
-      fetchFresh().then(function (d) {
-        d.saved = Date.now(); idb.set('ireland', d); setData(d);
-        toast(d.places.length.toLocaleString('en-IE') + ' places loaded');
-      }).catch(function () { toast('Could not reach the map server. Try again later.'); })
-        .then(function () { b.disabled = false; b.textContent = 'Check for new places'; });
+      checkForUpdates(true).then(function () { b.disabled = false; b.textContent = 'Check for updates'; });
     });
   }
 
@@ -862,9 +859,46 @@
       $('loading-text').textContent = 'Could not load places. Check your connection and try again.';
       l.querySelector('.loading-sub').innerHTML = esc(err.message) + '<br><br><button class="btn" type="button" onclick="location.reload()">Try again</button>';
     });
+    initUpdates();
+  }
+
+  // ---------- updates: new app versions and new places, checked on start, when the app comes back to the front, and on request ----------
+  var swReg = null, reloading = false;
+  function busyTyping() {
+    return state.view === 'suggest' && !!($('s-name').value || $('s-address').value || $('s-notes').value);
+  }
+  function applyAppUpdate() {
+    if (reloading) return;
+    if (busyTyping() || moving) { toast('A new version is ready. It will load next time you open the app.'); return; }
+    reloading = true; location.reload();
+  }
+  function newerPlaces() {
+    if (!state.meta || navigator.onLine === false) return Promise.resolve(false);
+    return fetchStatic().then(function (d) {
+      if (d.built && d.built === state.meta.built) return false;
+      d.saved = Date.now(); idb.set('ireland', d); setData(d); return true;
+    }).catch(function () { return false; });
+  }
+  function checkForUpdates(manual) {
+    var app = swReg ? swReg.update().then(function () { return !!(swReg.installing || swReg.waiting); }).catch(function () { return false; }) : Promise.resolve(false);
+    return Promise.all([app, newerPlaces()]).then(function (r) {
+      if (r[1]) toast('Places updated');
+      else if (manual && !r[0]) toast('You have the latest version');
+      if (r[0]) toast('Updating the app…');
+    });
+  }
+  function initUpdates() {
+    $('app-version').textContent = APP_VERSION;
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
-      navigator.serviceWorker.register('sw.js').catch(function () {});
+      var hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', function () { if (hadController) applyAppUpdate(); hadController = true; });
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) { swReg = reg; }).catch(function () {});
     }
+    // Phones often keep the app running in the background, so check again whenever it comes back to the front
+    var last = Date.now();
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && Date.now() - last > 60000) { last = Date.now(); checkForUpdates(false); }
+    });
   }
   start();
 })();

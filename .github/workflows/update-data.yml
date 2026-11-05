@@ -43,6 +43,12 @@ jobs:
           # GitHub sometimes refuses a push for a moment; try a few times
           for i in 1 2 3 4; do git push && break; sleep 20; git pull --rebase origin main || { git rebase --abort; exit 0; }; done
       - uses: actions/configure-pages@v5
+      - name: Stamp the app version (so phones pick up any change to the app's code)
+        run: |
+          v=$(cat index.html css/*.css js/*.js manifest.webmanifest | sha1sum | cut -c1-8)
+          sed -i "s/var VERSION = 'dfi-[^']*'/var VERSION = 'dfi-$v'/" sw.js
+          sed -i "s/var APP_VERSION = '[^']*'/var APP_VERSION = '$v'/" js/app.js
+          echo "App version $v"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .

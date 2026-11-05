@@ -414,7 +414,7 @@
     var wc = { yes: 'Wheelchair accessible', limited: 'Partly wheelchair accessible', no: 'Not wheelchair accessible' }[t.wheelchair];
     if (wc) facts += fact('access', 'Access', esc(wc));
     if (t.operator && t.operator !== p.n) facts += fact('info', 'Run by', esc(t.operator));
-    if (p.w && p.w.a) facts += fact('pin', 'Location', 'Shown at the centre of ' + esc(town(t) || 'the town') + '. Use Google Maps for the exact spot.');
+    if (p.w && p.w.a) facts += fact('pin', 'Location', (t['addr:street'] ? 'Shown on ' + esc(t['addr:street']) : 'Shown at the centre of ' + esc(town(t) || 'the town')) + '. Use Google Maps for the exact spot.');
     if (p.w && p.w.by) facts += fact('check', 'Suggested through this app', p.w.by === 'owner' ? 'By the owner or staff' : 'By a visitor');
     if (p.w && p.w.v === 'team' && !(p.w.s && p.w.s.length)) {
       facts += fact('check', 'Confirmed by Dog Friendly Ireland' + (p.w.c ? ' (checked ' + esc(fmtDate(p.w.c)) + ')' : ''),

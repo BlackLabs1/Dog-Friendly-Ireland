@@ -1,5 +1,5 @@
 /* Offline support: the app itself works offline; map tiles need a connection. */
-var VERSION = 'dfi-v7';
+var VERSION = 'dfi-v8';
 var SHELL = [
   './', 'index.html', 'css/app.css', 'js/config.js', 'js/places.js', 'js/app.js', 'manifest.webmanifest',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',

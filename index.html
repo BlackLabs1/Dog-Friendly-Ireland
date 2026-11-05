@@ -95,11 +95,14 @@
         <label class="field" for="s-name"><span>Name of the place <b>*</b></span>
           <input id="s-name" name="name" required maxlength="120" autocomplete="off"></label>
 
+        <label class="field" for="s-address"><span>Address <b>*</b></span>
+          <input id="s-address" name="address" required maxlength="200" autocomplete="off" placeholder="e.g. 12 Main Street, Kinsale"></label>
+
         <div class="row2">
-          <label class="field" for="s-town"><span>Town or area <b>*</b></span>
-            <input id="s-town" name="town" required maxlength="80" autocomplete="off"></label>
           <label class="field" for="s-county"><span>County <b>*</b></span>
             <select id="s-county" name="county" required><option value="">Choose…</option></select></label>
+          <label class="field" for="s-postcode"><span>Postcode</span>
+            <input id="s-postcode" name="postcode" maxlength="10" autocomplete="off" autocapitalize="characters" placeholder="Eircode or BT postcode"></label>
         </div>
 
         <label class="field" for="s-type"><span>Type of place <b>*</b></span>
@@ -120,6 +123,19 @@
 
         <label class="field" for="s-notes"><span>Anything dog owners should know?</span>
           <textarea id="s-notes" name="notes" rows="3" maxlength="500" placeholder="Water bowls, dog treats, which rooms or areas…"></textarea></label>
+
+        <div class="field photo-field">
+          <span>Photo</span>
+          <label class="photo-pick" for="s-photo">
+            <input id="s-photo" name="photo" type="file" accept="image/*">
+            <img id="s-photo-preview" alt="" hidden>
+            <span id="s-photo-label">Add a photo of the place</span>
+          </label>
+          <button class="link-btn" type="button" id="s-photo-remove" hidden>Remove photo</button>
+          <label class="check" for="s-photo-ok" id="s-photo-ok-row" hidden><input type="checkbox" id="s-photo-ok"> I took this photo, or have permission to share it, and it can be shown in the app</label>
+        </div>
+
+        <div class="hp" aria-hidden="true"><label for="s-website">Leave this empty</label><input id="s-website" name="website" tabindex="-1" autocomplete="off"></div>
 
         <label class="check" for="s-owner"><input type="checkbox" id="s-owner" name="owner"> I own or work at this place</label>
 

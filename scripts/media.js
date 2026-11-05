@@ -204,6 +204,11 @@ async function addMedia(places, log = console.log) {
       if (f.url && /^https?:\/\//.test(f.url) && !(t.website || t['contact:website'] || t.url)) { t['contact:website'] = f.url; fiSites++; }
       if (p.w && p.w.a) { p.la = f.la; p.lo = f.lo; p.w.a = 0; moved++; }
     }
+    // A photo sent with an approved suggestion (stored in the app owner's Google Drive)
+    if (p.w && p.w.ph) {
+      m.ph = [{ u: 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p.w.ph) + '&sz=w1200', f: 'https://drive.google.com/file/d/' + encodeURIComponent(p.w.ph) + '/view',
+        s: p.w.by === 'owner' ? 'sent by the business' : 'sent by a visitor', a: '', l: '' }].concat(m.ph || []);
+    }
     // The business's own share image (og:image) from its website, credited to the business and linked to its site
     const wfi = siteFacts[p.id];
     if (wfi && wfi.image) {

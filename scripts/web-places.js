@@ -82,6 +82,7 @@ function inCounty(hit, county, town) {
 async function locate(r) {
   const region = NI.test(r.county) ? 'County ' + r.county + ', Northern Ireland' : (r.county === 'Dublin' ? 'Dublin' : 'County ' + r.county);
   const tries = [r.name + ', ' + r.town + ', ' + region, r.name + ', ' + region];
+  if (r.street) tries.unshift(r.name + ', ' + r.street + ', ' + r.town + ', ' + region);
   for (const q of tries) {
     const hits = await nominatim({ q });
     const good = hits
@@ -134,6 +135,7 @@ async function buildWebPlaces(osmById, extraRows = [], log = console.log) {
       existing.w.s = Array.from(new Set(existing.w.s.concat(src)));
       if (r.note && !existing.w.n) existing.w.n = r.note;
       if (r.by && !existing.w.by) existing.w.by = r.by;
+      if (r.photo) existing.w.ph = r.photo;
       existing.w.v = r.verified || 'unconfirmed';
       if (r.found_in && r.found_in !== r.source) existing.w.f = r.found_in;
       if (r.checked) existing.w.c = r.checked;
@@ -147,12 +149,14 @@ async function buildWebPlaces(osmById, extraRows = [], log = console.log) {
     const tags = Object.assign({}, g.tags);
     tags[NI.test(r.county) || r.county === 'Dublin' ? 'addr:city' : 'addr:town'] = r.town;
     tags['addr:county'] = (r.county === 'Dublin' ? 'County ' : 'Co. ') + r.county;
+    if (r.street && !tags['addr:street']) tags['addr:street'] = r.street;
+    if (r.postcode && !tags['addr:postcode']) tags['addr:postcode'] = r.postcode;
     out.push({
       id: g.osm || 'x' + hash(key),
       la: Math.round(la * 1e6) / 1e6, lo: Math.round(lo * 1e6) / 1e6,
       n: r.name, u: 0, c: cat, d: policy, k: KIND[cat], t: tags,
       w: Object.assign({ s: src, n: r.note || '', a: g.approx, v: r.by ? 'suggested' : (r.verified || 'unconfirmed') },
-        r.by ? { by: r.by } : {}, r.found_in && r.found_in !== r.source ? { f: r.found_in } : {}, r.checked ? { c: r.checked } : {})
+        r.by ? { by: r.by } : {}, r.photo ? { ph: r.photo } : {}, r.found_in && r.found_in !== r.source ? { f: r.found_in } : {}, r.checked ? { c: r.checked } : {})
     });
   }
   fs.writeFileSync(CACHE, JSON.stringify(cache));

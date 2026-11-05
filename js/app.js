@@ -421,6 +421,7 @@
       var when = p.w.c ? ' (checked ' + esc(fmtDate(p.w.c)) + ')' : '';
       if (p.w.v === 'business') facts += fact('check', 'Confirmed by the business' + when, links);
       else if (p.w.v === 'official') facts += fact('check', 'Confirmed by the official tourism guide' + when, links);
+      else if (p.w.v === 'team') facts += fact('check', 'Confirmed by Dog Friendly Ireland' + when, 'Checked in person by our team.');
       else if (p.w.v !== 'suggested') facts += fact('info', 'Not yet confirmed by the business', 'Listed as dog friendly by ' + links + '. Check before you go.');
       else facts += fact('info', 'Link', links);
       if (p.w.f && p.w.v !== 'unconfirmed') facts += fact('info', 'First listed by', '<a href="' + esc(p.w.f) + '" target="_blank" rel="noopener">' + esc(host(p.w.f)) + '</a>');
@@ -654,7 +655,7 @@
       e.preventDefault();
       var err = $('s-error'); err.hidden = true;
       var bad = null;
-      ['s-name', 's-town', 's-county', 's-type'].forEach(function (id) {
+      ['s-name', 's-address', 's-county', 's-type'].forEach(function (id) {
         var el = $(id), ok = !!el.value.trim();
         el.setAttribute('aria-invalid', ok ? 'false' : 'true');
         if (!ok && !bad) bad = el;
@@ -666,33 +667,78 @@
         if (/^\S+\.\S+$/.test(link)) $('s-link').value = link = 'https://' + link;
         else bad = $('s-link');
       }
+      if (!bad && photoData && !$('s-photo-ok').checked) bad = $('s-photo-ok');
       if (bad) {
-        err.textContent = bad.id === 's-link' ? 'That link doesn\'t look right. Paste the full web address, or leave it empty.'
+        err.textContent = bad.id === 's-photo-ok' ? 'Please confirm you can share the photo, or remove it.' : bad.id === 's-link' ? 'That link doesn\'t look right. Paste the full web address, or leave it empty.'
           : bad.name === 'dogs' ? 'Choose where dogs are allowed, or pick "Not sure".' : 'Please fill in the fields marked *.';
         err.hidden = false; bad.focus(); return;
+      }
+      var address = $('s-address').value.trim();
+      var parts = address.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+      var values = {
+        name: $('s-name').value.trim(), address: address, town: parts[parts.length - 1] || address, county: $('s-county').value,
+        postcode: $('s-postcode').value.trim().toUpperCase(), type: $('s-type').value, dogs: dogs.value, link: link,
+        notes: $('s-notes').value.trim(), owner: $('s-owner').checked, website: $('s-website').value,
+        photo: photoData || '', photoOk: !!(photoData && $('s-photo-ok').checked)
+      };
+      var btn = $('s-submit');
+      var done = function () {
+        $('sent-name').textContent = values.name;
+        f.hidden = true; $('suggest-sent').hidden = false; f.reset(); clearPhoto();
+        f.querySelectorAll('[aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
+        $('view-suggest').scrollTop = 0;
+      };
+      var failed = function () { err.textContent = 'Couldn\'t send. Check your connection and try again.'; err.hidden = false; };
+      var reset = function () { btn.disabled = false; btn.textContent = 'Send suggestion'; };
+      var endpoint = (window.DFI_CONFIG || {}).suggestEndpoint;
+      if (endpoint) {
+        btn.disabled = true; btn.textContent = photoData ? 'Sending photo…' : 'Sending…';
+        // Google Apps Script doesn't let the page read its reply, so only a network error can be seen here
+        fetch(endpoint, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(values) })
+          .then(done, failed).then(reset);
+        return;
       }
       var cfg = (window.DFI_CONFIG || {}).suggestForm || {};
       if (!cfg.action || !cfg.fields) {
         err.textContent = 'Suggestions aren\'t switched on yet. Please try again soon.'; err.hidden = false; return;
       }
-      var values = {
-        name: $('s-name').value.trim(), town: $('s-town').value.trim(), county: $('s-county').value,
-        type: $('s-type').value, dogs: dogs.value, link: link, notes: $('s-notes').value.trim(),
-        owner: $('s-owner').checked ? 'Yes' : 'No'
-      };
+      // Older Google Form (no photo): the address goes in its "Town or area" question
+      var form = { name: values.name, town: [address, values.postcode].filter(Boolean).join(', '), county: values.county, type: values.type,
+        dogs: values.dogs, link: link, notes: values.notes, owner: values.owner ? 'Yes' : 'No' };
       var body = new URLSearchParams();
-      Object.keys(cfg.fields).forEach(function (k) { if (values[k] != null) body.append(cfg.fields[k], values[k]); });
-      var btn = $('s-submit'); btn.disabled = true; btn.textContent = 'Sending…';
-      // Google Forms accepts the post but doesn't let the page read the reply, so a network error is the only failure we can see
-      fetch(cfg.action, { method: 'POST', mode: 'no-cors', body: body }).then(function () {
-        $('sent-name').textContent = values.name;
-        f.hidden = true; $('suggest-sent').hidden = false; f.reset();
-        f.querySelectorAll('[aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
-        $('view-suggest').scrollTop = 0;
-      }).catch(function () {
-        err.textContent = 'Couldn\'t send. Check your connection and try again.'; err.hidden = false;
-      }).then(function () { btn.disabled = false; btn.textContent = 'Send suggestion'; });
+      Object.keys(cfg.fields).forEach(function (k) { if (form[k] != null) body.append(cfg.fields[k], form[k]); });
+      btn.disabled = true; btn.textContent = 'Sending…';
+      fetch(cfg.action, { method: 'POST', mode: 'no-cors', body: body }).then(done, failed).then(reset);
     });
+
+    // Photo: shrunk on the phone to at most 1600 pixels so it uploads quickly
+    var photoData = null;
+    function clearPhoto() {
+      photoData = null; $('s-photo').value = '';
+      $('s-photo-preview').hidden = true; $('s-photo-preview').removeAttribute('src');
+      $('s-photo-label').textContent = 'Add a photo of the place';
+      $('s-photo-remove').hidden = true; $('s-photo-ok-row').hidden = true; $('s-photo-ok').checked = false;
+    }
+    $('s-photo').addEventListener('change', function () {
+      var file = this.files && this.files[0]; if (!file) return;
+      if (!/^image\//.test(file.type)) { clearPhoto(); return; }
+      $('s-photo-label').textContent = 'Preparing photo…';
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var max = 1600, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+        var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+        var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        photoData = c.toDataURL('image/jpeg', 0.82);
+        $('s-photo-preview').src = photoData; $('s-photo-preview').hidden = false;
+        $('s-photo-label').textContent = 'Change photo';
+        $('s-photo-remove').hidden = false; $('s-photo-ok-row').hidden = false;
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); clearPhoto(); $('s-photo-label').textContent = 'That photo couldn\'t be opened. Try another.'; };
+      img.src = url;
+    });
+    $('s-photo-remove').addEventListener('click', clearPhoto);
     $('suggest-again').addEventListener('click', function () { $('suggest-sent').hidden = true; f.hidden = false; $('s-name').focus(); });
   }
 

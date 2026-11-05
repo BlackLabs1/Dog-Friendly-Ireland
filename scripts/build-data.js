@@ -13,6 +13,7 @@ const { loadSuggestions } = require('./suggestions.js');
 const { nameAndPlace } = require('./reverse.js');
 const { addMedia } = require('./media.js');
 const { applyWebsiteFacts } = require('./website-facts.js');
+const { chainStores } = require('./chains.js');
 
 const DATA = path.join(__dirname, '..', 'data');
 const OSM_FILE = path.join(DATA, 'osm-places.json');
@@ -118,7 +119,14 @@ function dedupe(list) {
   const osm = await osmPlaces();
   const byId = {};
   osm.places.forEach(p => { delete p.w; byId[p.id] = p; });
-  await nameAndPlace(osm.places);
+  // Branches of shops and chains known to welcome dogs (data/chains.csv); they replace the same place from the main download
+  const chains = await chainStores();
+  chains.forEach(c => {
+    const i = osm.places.findIndex(p => p.id === c.id);
+    if (i >= 0) { if (osm.places[i].t.dog) c.d = osm.places[i].d; osm.places[i] = c; } else osm.places.push(c);
+    byId[c.id] = c;
+  });
+    await nameAndPlace(osm.places);
   const web = await buildWebPlaces(byId, await loadSuggestions());
   const closedFile = path.join(DATA, 'closed.json');
   const closed = fs.existsSync(closedFile) ? JSON.parse(fs.readFileSync(closedFile, 'utf8')) : {};

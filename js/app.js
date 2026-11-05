@@ -416,12 +416,16 @@
     if (t.operator && t.operator !== p.n) facts += fact('info', 'Run by', esc(t.operator));
     if (p.w && p.w.a) facts += fact('pin', 'Location', 'Shown at the centre of ' + esc(town(t) || 'the town') + '. Use Google Maps for the exact spot.');
     if (p.w && p.w.by) facts += fact('check', 'Suggested through this app', p.w.by === 'owner' ? 'By the owner or staff' : 'By a visitor');
+    if (p.w && p.w.v === 'team' && !(p.w.s && p.w.s.length)) {
+      facts += fact('check', 'Confirmed by Dog Friendly Ireland' + (p.w.c ? ' (checked ' + esc(fmtDate(p.w.c)) + ')' : ''),
+        p.w.all ? 'Our team confirmed that ' + esc(p.w.chain) + ' stores welcome dogs.' : 'Checked in person by our team.');
+    }
     if (p.w && p.w.s && p.w.s.length) {
       var links = p.w.s.map(function (s) { return '<a href="' + esc(s) + '" target="_blank" rel="noopener">' + esc(host(s)) + '</a>'; }).join('<br>');
       var when = p.w.c ? ' (checked ' + esc(fmtDate(p.w.c)) + ')' : '';
       if (p.w.v === 'business') facts += fact('check', 'Confirmed by the business' + when, links);
       else if (p.w.v === 'official') facts += fact('check', 'Confirmed by the official tourism guide' + when, links);
-      else if (p.w.v === 'team') facts += fact('check', 'Confirmed by Dog Friendly Ireland' + when, 'Checked in person by our team.');
+      else if (p.w.v === 'team') facts += fact('check', 'Confirmed by Dog Friendly Ireland' + when, p.w.all ? 'Our team confirmed that ' + esc(p.w.chain) + ' stores welcome dogs.' : 'Checked in person by our team.');
       else if (p.w.v !== 'suggested') facts += fact('info', 'Not yet confirmed by the business', 'Listed as dog friendly by ' + links + '. Check before you go.');
       else facts += fact('info', 'Link', links);
       if (p.w.f && p.w.v !== 'unconfirmed') facts += fact('info', 'First listed by', '<a href="' + esc(p.w.f) + '" target="_blank" rel="noopener">' + esc(host(p.w.f)) + '</a>');

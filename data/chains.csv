@@ -1,0 +1,16 @@
+brand,match,where,category,policy,verified,source,note,checked
+The Range,^The Range$,all,shop,leashed,team,https://www.leinsterexpress.ie/news/business/the-range-opening-date-for-new-laois-store-with-big-pet-surprise-6885790,"Well-behaved dogs on a lead are welcome. Rules can vary by store, so check with staff.",2026-11-05
+Harvey Norman,^Harvey Norman,all,shop,friendly,team,,"Confirmed dog friendly by our team. Rules can vary by store, so check with staff.",2026-11-05
+TK Maxx,^T\.? ?K\.? ?Maxx$,all,shop,friendly,team,,"Confirmed dog friendly by our team. Rules can vary by store, so check with staff.",2026-11-05
+CeX,^CeX$,dundrum,shop,leashed,team,,"Dogs on a lead. Confirmed at the Dundrum Town Centre store; other CeX stores may differ.",2026-11-05
+Mint Velvet,^Mint Velvet$,dundrum,shop,leashed,business,https://www.dundrum.ie/dogs-admission-policy,"Dundrum Town Centre lists this store as dog friendly. Dogs on a lead; use the lifts or stairs, not the escalators.",2026-11-05
+The Health Store,^The Health Store$,dundrum,shop,leashed,business,https://www.dundrum.ie/dogs-admission-policy,"Dundrum Town Centre lists this store as dog friendly. Dogs on a lead; use the lifts or stairs, not the escalators.",2026-11-05
+Zambrero,^Zambrero$,dundrum,food,leashed,business,https://www.dundrum.ie/dogs-admission-policy,"Dundrum Town Centre lists this restaurant as dog friendly. Dogs on a lead.",2026-11-05
+Fastfix,^Fast ?fix$,dundrum,shop,leashed,business,https://www.dundrum.ie/dogs-admission-policy,"Dundrum Town Centre lists this store as dog friendly. Dogs on a lead; use the lifts or stairs, not the escalators.",2026-11-05
+TAG Heuer,^TAG Heuer$,dundrum,shop,leashed,business,https://www.dundrum.ie/dogs-admission-policy,"Dundrum Town Centre lists this store as dog friendly. Dogs on a lead; use the lifts or stairs, not the escalators.",2026-11-05
+The North Face,^The North Face$,dundrum,shop,leashed,business,https://www.dundrum.ie/dogs-admission-policy,"Dundrum Town Centre lists this store as dog friendly. Dogs on a lead; use the lifts or stairs, not the escalators.",2026-11-05
+Vans,^Vans$,dundrum,shop,leashed,business,https://www.dundrum.ie/dogs-admission-policy,"Dundrum Town Centre lists this store as dog friendly. Dogs on a lead; use the lifts or stairs, not the escalators.",2026-11-05
+Timberland,^Timberland$,dundrum,shop,leashed,business,https://www.dundrum.ie/dogs-admission-policy,"Dundrum Town Centre lists this store as dog friendly. Dogs on a lead; use the lifts or stairs, not the escalators.",2026-11-05
+Smooch,^Smooch,dundrum,shop,leashed,business,https://www.dundrum.ie/dogs-admission-policy,"Dundrum Town Centre lists this store as dog friendly. Dogs on a lead; use the lifts or stairs, not the escalators.",2026-11-05
+The Port House,^(The )?Port House,dundrum,food,leashed,business,https://www.dundrum.ie/dogs-admission-policy,"Dundrum Town Centre lists this restaurant as dog friendly. Dogs on a lead.",2026-11-05
+Smiggle,^Smiggle$,dundrum,shop,leashed,business,https://www.dundrum.ie/dogs-admission-policy,"Dundrum Town Centre lists this store as dog friendly. Dogs on a lead; use the lifts or stairs, not the escalators.",2026-11-05

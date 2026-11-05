@@ -101,7 +101,11 @@ async function locate(r) {
       return { la: +h.lat, lo: +h.lon, approx: 0, osm: h.osm_type ? h.osm_type.charAt(0) + h.osm_id : null, tags: extras };
     }
   }
-  // Fall back to the town centre
+  // Fall back to the street, then the town centre
+  if (r.street) {
+    const st = await nominatim({ q: r.street + ', ' + r.town + ', ' + region, limit: 1 });
+    if (st.length) return { la: +st[0].lat, lo: +st[0].lon, approx: 1, osm: null, tags: {} };
+  }
   const hits = await nominatim({ q: r.town + ', ' + region, limit: 1 });
   if (hits.length) return { la: +hits[0].lat, lo: +hits[0].lon, approx: 1, osm: null, tags: {} };
   return null;
@@ -118,6 +122,8 @@ async function buildWebPlaces(osmById, extraRows = [], log = console.log) {
   for (const r of rows) {
     const key = norm(r.name) + '|' + norm(r.town) + '|' + norm(r.county);
     let g = cache[key];
+    // A row with its own map position doesn't need looking up
+    if (+r.lat && +r.lon) g = { la: +r.lat, lo: +r.lon, approx: 0, osm: null, tags: {} };
     if (g === undefined) {
       try { g = await locate(r); looked++; } catch (e) { log('  lookup failed:', r.name, e.message); continue; }
       cache[key] = g;
@@ -150,6 +156,7 @@ async function buildWebPlaces(osmById, extraRows = [], log = console.log) {
     tags[NI.test(r.county) || r.county === 'Dublin' ? 'addr:city' : 'addr:town'] = r.town;
     tags['addr:county'] = (r.county === 'Dublin' ? 'County ' : 'Co. ') + r.county;
     if (r.street && !tags['addr:street']) tags['addr:street'] = r.street;
+    ['phone', 'website', 'facebook', 'instagram'].forEach(k => { if (r[k] && !tags[k] && !tags['contact:' + k]) tags['contact:' + k] = r[k]; });
     if (r.postcode && !tags['addr:postcode']) tags['addr:postcode'] = r.postcode;
     out.push({
       id: g.osm || 'x' + hash(key),

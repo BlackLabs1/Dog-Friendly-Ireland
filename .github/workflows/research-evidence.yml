@@ -1,0 +1,25 @@
+name: Research evidence for unconfirmed places
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: First place (0-based)
+        default: '0'
+      count:
+        description: How many places
+        default: '10000'
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/research-evidence.js "${{ inputs.start }}" "${{ inputs.count }}"

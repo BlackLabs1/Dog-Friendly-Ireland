@@ -9,12 +9,12 @@ const zlib = require('zlib');
 const H = require('./research-evidence.js');
 
 const DATA = path.join(__dirname, '..', 'data');
-const FOLLOW = /bringfido\.|dogfriendly\.co\.uk|thegooddogguide\.com|discovernorthernireland\.com|discoverireland\.ie|wanderlog\.com/i;
+const FOLLOW = /bringfido\.|dogfriendly\.co\.uk|thegooddogguide\.com|discovernorthernireland\.com|discoverireland\.ie|wanderlog\.com|visitbelfast\.com|visitlisburncastlereagh\.com|shapedbyseaandstone\.com|visitardsandnorthdown\.com|visitcausewaycoastandglens\.com|visitmournemountains\.co\.uk|visitarmagh\.com|fermanaghlakelands\.com|visitderry\.com|visitmidulster\.com|visitwaterford\.com|visitwexford\.ie|visitkilkenny\.ie|visitdublin\.com/i;
 
 (async () => {
   const places = JSON.parse(fs.readFileSync(path.join(DATA, 'ireland.json'), 'utf8')).places.filter(p => p.w && p.w.v === 'unconfirmed');
   const keyed = places.map(p => ({ id: p.id, n: p.n, ks: H.keys(p.n) }));
-  const urls = fs.readFileSync(path.join(DATA, 'research', 'corpus.txt'), 'utf8').split('\n').map(s => s.trim()).filter(s => /^https?:/.test(s));
+  const urls = fs.readFileSync(path.join(DATA, 'research', process.env.CORPUS || 'corpus.txt'), 'utf8').split('\n').map(s => s.trim()).filter(s => /^https?:/.test(s));
   const pages = {}, hits = {};
   const scan = async (u, depth) => {
     if (pages[u]) return;
@@ -28,7 +28,11 @@ const FOLLOW = /bringfido\.|dogfriendly\.co\.uk|thegooddogguide\.com|discovernor
     for (const k of keyed) {
       if (!k.ks.some(x => (' ' + all + ' ').includes(' ' + x + ' '))) continue;
       const ps = H.passages(bl, k.n);
-      if (ps.length) { (hits[k.id] = hits[k.id] || { n: k.n, pages: [] }).pages.push({ url: u, passages: ps }); n++; }
+      if (ps.length) {
+        const rec = { url: u, passages: ps };
+        if (depth === 1) rec.dogs = H.dogSentences(bl, u).map(d => d.s).slice(0, 8);
+        (hits[k.id] = hits[k.id] || { n: k.n, pages: [] }).pages.push(rec); n++;
+      }
     }
     console.log('page', r.status, pg.published || '-', n + ' places', u);
     if (depth === 0 && FOLLOW.test(u)) {

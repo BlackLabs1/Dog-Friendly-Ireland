@@ -12,6 +12,9 @@ on:
       script:
         description: evidence (places' own sources and websites) or corpus (guide pages in data/research/corpus.txt)
         default: evidence
+      corpus:
+        description: file in data/research listing the guide pages
+        default: corpus.txt
 
 permissions:
   contents: read
@@ -29,3 +32,5 @@ jobs:
         run: node scripts/research-evidence.js "${{ inputs.start }}" "${{ inputs.count }}"
       - if: inputs.script == 'corpus'
         run: node scripts/research-corpus.js
+        env:
+          CORPUS: ${{ inputs.corpus }}

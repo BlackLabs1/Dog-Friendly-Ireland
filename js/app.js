@@ -892,7 +892,7 @@
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       var hadController = !!navigator.serviceWorker.controller;
       navigator.serviceWorker.addEventListener('controllerchange', function () { if (hadController) applyAppUpdate(); hadController = true; });
-      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) { swReg = reg; }).catch(function () {});
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) { swReg = reg; return reg.update(); }).catch(function () {});   // check for a new version straight away
     }
     // Phones often keep the app running in the background, so check again whenever it comes back to the front
     var last = Date.now();

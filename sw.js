@@ -1,5 +1,5 @@
 /* Offline support: the app itself works offline; map tiles need a connection. */
-var VERSION = 'dfi-v13';
+var VERSION = 'dfi-v14';
 var SHELL = [
   './', 'index.html', 'css/app.css', 'js/config.js', 'js/places.js', 'js/app.js', 'manifest.webmanifest',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
@@ -28,7 +28,19 @@ self.addEventListener('fetch', function (e) {
   // Map tiles, place data and live map-server queries: always go to the network.
   if (url.origin !== location.origin && !CACHED_HOSTS.test(url.hostname)) return;
   if (/data\/ireland\.json$/.test(url.pathname)) return;
-  // App files, Leaflet and fonts: serve from cache, refresh in the background.
+  // The app's own files: always try the network first so changes show the next time the app opens; use the saved copy offline.
+  if (url.origin === location.origin) {
+    e.respondWith(caches.open(VERSION).then(function (cache) {
+      return fetch(req, { cache: 'no-cache' }).then(function (res) {
+        if (res && res.ok) cache.put(req, res.clone());
+        return res;
+      }).catch(function () {
+        return cache.match(req, { ignoreSearch: true }).then(function (hit) { return hit || cache.match('./'); });
+      });
+    }));
+    return;
+  }
+  // Libraries and fonts (fixed versions): serve from cache, refresh in the background.
   e.respondWith(caches.open(VERSION).then(function (cache) {
     return cache.match(req, { ignoreSearch: url.origin === location.origin }).then(function (hit) {
       var net = fetch(req).then(function (res) {

@@ -3,7 +3,7 @@
    For each unconfirmed place it reads:
      1. the article where the place was found, keeping only the passage about that place and the article's date;
      2. the place's own website (home page plus pages such as FAQ, policies, visit, rooms, contact),
-        keeping only sentences that mention dogs or pets.
+        keeping only sentences that mention dogs or pets, and sentences about outdoor areas (beer garden, terrace, patio).
    Nothing is saved in the repository: the result is printed to the job log (gzip + base64 between markers)
    for a person or Claude to read while researching each place.
    Run: node scripts/research-evidence.js [startIndex] [count] */
@@ -16,6 +16,7 @@ const DATA = path.join(__dirname, '..', 'data');
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 DogFriendlyIreland-research';
 const SKIP = /facebook\.com|instagram\.com|business\.site|tripadvisor|booking\.com|google\.|linktr\.ee|twitter\.com|x\.com\//i;
 const DOG = /\b(dogs?|doggy|doggie|pets?|pup|puppy|puppies|pooch|pooches|canine|four[- ]legged|furry (friend|friends|guests)|hound|pupp?uccino|woof)\b/i;
+const OUT = /\b(beer garden|garden|terrace|patio|courtyard|outdoor (seating|area|tables|dining|space)|outside (seating|area|tables)|al fresco|alfresco|smoking area|decking|deck|heated (canopy|marquee)|marquee|seating outside|sit outside|picnic)\b/i;
 const LINK = /dog|pet|faq|polic|terms|visit|about|contact|stay|room|accommodation|info|rules|garden|terrace|plan|amenit|facilit|find-us|cottage|camp|pitch/i;
 
 async function get(u, ms = 20000) {
@@ -75,6 +76,14 @@ function dogSentences(bl, url) {
   }
   return [...new Set(out)].slice(0, 15).map(s => ({ url, s }));
 }
+function outdoorSentences(bl, url) {
+  const out = [];
+  for (const b of bl) {
+    if (!OUT.test(b.text)) continue;
+    b.text.split(/(?<=[.!?])\s+/).forEach(t => { if (OUT.test(t) && t.length < 400) out.push(t.trim()); });
+  }
+  return [...new Set(out)].slice(0, 10).map(t => ({ url, s: t }));
+}
 function links(html, base) {
   const out = new Set(); let host;
   try { host = new URL(base).host; } catch (e) { return []; }
@@ -92,17 +101,21 @@ async function pool(items, n, fn) {
   await Promise.all(Array.from({ length: n }, run));
 }
 
+// Optional list of place ids to limit the run to (ONLY=data/research/outdoor-ids.txt)
+const ONLY = process.env.ONLY ? new Set(fs.readFileSync(process.env.ONLY, 'utf8').split(/\s+/).filter(Boolean)) : null;
+
 async function main() {
   const start = +(process.argv[2] || 0), count = +(process.argv[3] || 10000);
   const places = JSON.parse(fs.readFileSync(path.join(DATA, 'ireland.json'), 'utf8')).places
-    .filter(p => p.w && p.w.v === 'unconfirmed').slice(start, start + count);
+    .filter(p => p.w && p.w.v === 'unconfirmed').slice(start, start + count)
+    .filter(p => !ONLY || ONLY.has(p.id));
   const facts = fs.existsSync(path.join(DATA, 'website-facts.json')) ? JSON.parse(fs.readFileSync(path.join(DATA, 'website-facts.json'), 'utf8')) : {};
   const result = {};
-  // 1. articles
+  // 1. articles (skipped when limited to a list of places)
   const bySource = {};
   places.forEach(p => (p.w.s || []).forEach(s => (bySource[s] = bySource[s] || []).push(p)));
   const articles = {};
-  await pool(Object.keys(bySource), 4, async src => {
+  if (!ONLY) await pool(Object.keys(bySource), 4, async src => {
     const r = await get(src, 30000);
     const a = { status: r.status, url: r.url };
     if (r.html) {
@@ -124,16 +137,17 @@ async function main() {
     x.osm = Object.fromEntries(Object.entries(t).filter(([k]) => /^(dog|website|contact:website|url|outdoor_seating|indoor_seating|beer_garden|check_date|disused|opening_hours|phone|contact:phone|email|contact:email|contact:facebook|facebook)/.test(k)));
     const site = t.website || t['contact:website'] || t.url || (facts[p.id] && facts[p.id].site);
     if (!site || SKIP.test(site)) return;
-    x.site = { url: site, pages: [], dogs: [] };
+    x.site = { url: site, pages: [], dogs: [], outdoor: [] };
     const home = await get(site);
     x.site.status = home.status;
     if (!home.html) return;
     x.site.final = home.url;
     x.site.dogs.push(...dogSentences(blocks(home.html), home.url));
+    x.site.outdoor.push(...outdoorSentences(blocks(home.html), home.url));
     for (const l of links(home.html, home.url)) {
       const pg = await get(l, 15000);
       x.site.pages.push(l.replace(/^https?:\/\/[^/]+/, '') + ' ' + pg.status);
-      if (pg.html) x.site.dogs.push(...dogSentences(blocks(pg.html), pg.url));
+      if (pg.html) { x.site.dogs.push(...dogSentences(blocks(pg.html), pg.url)); x.site.outdoor.push(...outdoorSentences(blocks(pg.html), pg.url)); }
     }
     const seen = new Set(); x.site.dogs = x.site.dogs.filter(d => !seen.has(d.s) && seen.add(d.s)).slice(0, 25);
   });

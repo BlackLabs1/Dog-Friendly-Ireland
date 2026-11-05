@@ -15,6 +15,9 @@ on:
       corpus:
         description: file in data/research listing the guide pages
         default: corpus.txt
+      only:
+        description: optional file listing place ids to check (evidence script only)
+        default: ''
 
 permissions:
   contents: read
@@ -30,6 +33,8 @@ jobs:
           node-version: 20
       - if: inputs.script == 'evidence'
         run: node scripts/research-evidence.js "${{ inputs.start }}" "${{ inputs.count }}"
+        env:
+          ONLY: ${{ inputs.only }}
       - if: inputs.script == 'corpus'
         run: node scripts/research-corpus.js
         env:

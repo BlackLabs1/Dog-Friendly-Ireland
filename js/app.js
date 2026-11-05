@@ -270,7 +270,6 @@
     close: '<path d="M6 6l12 12M18 6 6 18"/>',
     social: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/>',
     check: '<path d="m5 12 4 4L19 7"/>',
-    gmaps: '<path d="M12 22s7-6.6 7-12.5a7 7 0 0 0-14 0C5 15.4 12 22 12 22z"/><path d="M9.5 9.5h5M12 7v5"/>'
   };
   function ico(n) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICON[n] + '</svg>'; }
 
@@ -293,15 +292,6 @@
   function social(v, base) { return /^https?:/i.test(v) ? v : base + v.replace(/^@/, ''); }
   function telHref(n) { return 'tel:' + n.replace(/[^\d+]/g, ''); }
 
-  function googleUrl(p) {
-    var t = p.t, q;
-    if (p.u || p.gn) q = p.la + ',' + p.lo;
-    else {
-      var where = [t['addr:street'], town(t), t['addr:county']].filter(Boolean).join(', ');
-      q = where ? p.n + ', ' + where : p.n + ' near ' + p.la.toFixed(5) + ',' + p.lo.toFixed(5);
-    }
-    return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
-  }
   function directionsUrl(p, mode) {
     // Places only known to be in a town (not pinned exactly) are routed by name instead of coordinates
     var byName = p.w && p.w.a, named = p.n + ', ' + [town(p.t), p.t['addr:county']].filter(Boolean).join(', ');
@@ -438,11 +428,9 @@
     }
     if (facts) h += '<dl class="facts">' + facts + '</dl>';
 
-    h += '<a class="gmaps" href="' + esc(googleUrl(p)) + '" target="_blank" rel="noopener">' + ico('gmaps') +
-      '<div><strong>See photos & reviews on Google Maps</strong><span>Opens in your Google Maps app</span></div></a>';
-
     var webOnly = p.w && 'a' in p.w && !/^[nwr]\d/.test(p.id);
-    var ownerMove = owner.token ? '<br><button class="btn ghost owner-move" type="button" id="act-move">Move this marker</button>' : '';
+    var ownerMove = owner.token ? '<span class="owner-btns"><button class="btn ghost" type="button" id="act-move">Move this marker</button>' +
+      '<button class="btn ghost danger" type="button" id="act-delete">Delete this place</button></span>' : '';
     h += '<p class="fix">' + (t.check_date ? 'Details last checked ' + esc(fmtDate(t.check_date)) + '. ' : '') +
       (webOnly ? 'Something wrong or out of date? <a href="' + esc(reportUrl(p)) + '" target="_blank" rel="noopener">Report it</a>, or <a href="' + esc(osmUrl(p)) + '" target="_blank" rel="noopener">add it to OpenStreetMap</a>.'
                : 'Something wrong or missing? <a href="' + esc(osmUrl(p)) + '" target="_blank" rel="noopener">Fix this on OpenStreetMap</a>.') + ownerMove + '</p>';
@@ -639,35 +627,58 @@
     moving = null; $('move').hidden = true; $('app').classList.remove('routing');
     if (movePin && map) { map.removeLayer(movePin); movePin = null; }
   }
-  function saveMove() {
-    if (!moving || !movePin) return;
-    var p = moving, ll = movePin.getLatLng(), la = Math.round(ll.lat * 1e6) / 1e6, lo = Math.round(ll.lng * 1e6) / 1e6;
-    var b = $('move-save'); b.disabled = true; b.textContent = 'Saving…';
-    var line = [p.id, la, lo, '"' + p.n.replace(/"/g, '""') + '"', new Date().toISOString().slice(0, 10)].join(',');
+  // Adds one line to a file in the repository (saving triggers the quick update, live in about a minute)
+  function appendToRepo(file, line, message) {
     function attempt(tries) {
-      return gh('/contents/' + MOVES).then(function (r) {
+      return gh('/contents/' + file).then(function (r) {
         if (!r.ok) throw new Error('read ' + r.status);
         return r.json();
       }).then(function (f) {
         var text = decodeURIComponent(escape(atob(f.content.replace(/\n/g, ''))));
         if (!/\n$/.test(text)) text += '\n';
         text += line + '\n';
-        return gh('/contents/' + MOVES, { method: 'PUT', body: {
-          message: 'Move ' + p.n + ' on the map', sha: f.sha, content: btoa(unescape(encodeURIComponent(text))) } });
+        return gh('/contents/' + file, { method: 'PUT', body: { message: message, sha: f.sha, content: btoa(unescape(encodeURIComponent(text))) } });
       }).then(function (r) {
         if (r.status === 409 && tries > 0) return attempt(tries - 1);   // saved by another device at the same moment
         if (!r.ok) throw new Error('save ' + r.status);
       });
     }
-    attempt(2).then(function () {
+    return attempt(2);
+  }
+  function saveError(err) {
+    toast(/401|403/.test(err.message) ? 'Your GitHub key has expired or lost access. Reconnect it in About.' : 'Couldn\'t save. Check your connection and try again.');
+  }
+  function deletePlace(id) {
+    var p = state.byId[id]; if (!p || !owner.token) return;
+    if (!window.confirm('Delete "' + p.n + '" from the app?\n\nIt will disappear for everyone in about a minute. You can bring it back later by removing its line from data/removed.txt on GitHub.')) return;
+    var b = $('act-delete'); if (b) { b.disabled = true; b.textContent = 'Deleting…'; }
+    var line = p.id + '  ' + p.n.replace(/\s+/g, ' ') + ' (removed in the app, ' + new Date().toISOString().slice(0, 10) + ')';
+    appendToRepo('data/removed.txt', line, 'Remove ' + p.n + ' from the app').then(function () {
+      state.places = state.places.filter(function (x) { return x.id !== id; });
+      delete state.byId[id];
+      if (state.meta) { state.meta.places = state.places; idb.set('ireland', state.meta); }
+      closeToView(); refresh(); renderChips();
+      toast('Deleted. Everyone will stop seeing it in about a minute.');
+    }).catch(function (err) {
+      saveError(err); if (b) { b.disabled = false; b.textContent = 'Delete this place'; }
+    });
+  }
+  function showOnMap(id) {
+    location.hash = 'map';
+    setTimeout(function () { location.hash = 'place-' + id; }, 0);
+  }
+  function saveMove() {
+    if (!moving || !movePin) return;
+    var p = moving, ll = movePin.getLatLng(), la = Math.round(ll.lat * 1e6) / 1e6, lo = Math.round(ll.lng * 1e6) / 1e6;
+    var b = $('move-save'); b.disabled = true; b.textContent = 'Saving…';
+    var line = [p.id, la, lo, '"' + p.n.replace(/"/g, '""') + '"', new Date().toISOString().slice(0, 10)].join(',');
+    appendToRepo(MOVES, line, 'Move ' + p.n + ' on the map').then(function () {
       p.la = la; p.lo = lo; if (p.w) p.w.a = 0;
       if (state.meta) { idb.set('ireland', state.meta); }
       drawMarkers(filtered());
       toast('Saved. Everyone will see the new position in about a minute.');
       endMove();
-    }).catch(function (err) {
-      toast(/401|403/.test(err.message) ? 'Your GitHub key has expired or lost access. Reconnect it in About.' : 'Couldn\'t save. Check your connection and try again.');
-    }).then(function () { b.disabled = false; b.textContent = 'Save position'; });
+    }).catch(saveError).then(function () { b.disabled = false; b.textContent = 'Save position'; });
   }
 
   // ---------- routing ----------
@@ -722,7 +733,8 @@
       if (md && trip) { trip.mode = md.dataset.mode; store('dfi-mode', trip.mode); showRoute(); getRoute(); return; }
       if (e.target.closest('#route-close')) { endRoute(); return; }
       if (e.target.closest('#act-share')) { share(state.sheetId); return; }
-      if (e.target.closest('#act-osm')) { window.open(osmUrl(state.byId[state.sheetId]), '_blank', 'noopener'); return; }
+      if (e.target.closest('#act-osm')) { showOnMap(state.sheetId); return; }
+      if (e.target.closest('#act-delete')) { deletePlace(state.sheetId); return; }
       var cp = e.target.closest('[data-copy]');
       if (cp) { copy(cp.dataset.copy); return; }
       if (e.target.id === 'show-all') { e.preventDefault(); state.areaOnly = false; renderList(); }

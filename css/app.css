@@ -169,7 +169,9 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .move-pin svg { width: 34px; height: 46px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
 .owner { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 8px; }
 .owner-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 6px; }
-.fix .owner-move { display: inline-block; margin-top: 8px; }
+.owner-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.owner-btns .btn { margin: 0; padding: 8px 14px; font-size: .9rem; }
+.btn.ghost.danger { color: #c92a2a; border-color: #c92a2a; }
 .route-note { margin: 8px 0 0; font-size: .74rem; color: var(--ink-2); }
 .route-note a { color: var(--ink-2); }
 

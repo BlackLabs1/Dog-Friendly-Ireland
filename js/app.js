@@ -663,9 +663,16 @@
       saveError(err); if (b) { b.disabled = false; b.textContent = 'Delete this place'; }
     });
   }
+  // Closes the place (like X) and shows it on the main map, circled
   function showOnMap(id) {
+    var p = state.byId[id] || state.saved[id];
+    window.addEventListener('hashchange', function () {
+      if (!map || !p) return;
+      map.setView([p.la, p.lo], Math.max(map.getZoom(), 16), { animate: false });
+      if (selectedMarker) map.removeLayer(selectedMarker);
+      selectedMarker = L.circleMarker([p.la, p.lo], { radius: 13, weight: 3, color: P.CAT_BY_ID[p.c].color, fill: false }).addTo(map);
+    }, { once: true });
     location.hash = 'map';
-    setTimeout(function () { location.hash = 'place-' + id; }, 0);
   }
   function saveMove() {
     if (!moving || !movePin) return;

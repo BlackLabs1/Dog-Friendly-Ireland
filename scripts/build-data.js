@@ -169,6 +169,14 @@ function dedupe(list) {
     });
     console.log('Moved', moved, 'markers by hand');
   }
+  // data/descriptions.json: a short description of each place, written from its sources (id -> text)
+  const descFile = path.join(DATA, 'descriptions.json');
+  if (fs.existsSync(descFile)) {
+    const desc = JSON.parse(fs.readFileSync(descFile, 'utf8'));
+    let n = 0;
+    places.forEach(p => { if (desc[p.id]) { p.ds = desc[p.id]; n++; } });
+    console.log('Added descriptions to', n, 'places');
+  }
   const out = {
     generated: osm.generated,
     built: new Date().toISOString(),

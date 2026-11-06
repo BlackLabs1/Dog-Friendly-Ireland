@@ -124,7 +124,7 @@
     state.meta = d;
     state.places = d.places;
     state.byId = {};
-    d.places.forEach(function (p) { state.byId[p.id] = p; p._s = (p.n + ' ' + town(p.t) + ' ' + (p.t['addr:county'] || '') + ' ' + p.k + ' ' + (p.t.cuisine || '')).toLowerCase(); });
+    d.places.forEach(function (p) { state.byId[p.id] = p; p._s = (p.n + ' ' + town(p.t) + ' ' + (p.t['addr:county'] || '') + ' ' + p.k + ' ' + (p.t.cuisine || '') + ' ' + (p.ds || '')).toLowerCase(); });
     $('data-meta').textContent = d.places.length.toLocaleString('en-IE') + ' places, from OpenStreetMap data as of ' + fmtDate(d.generated) + '.';
     renderChips(); refresh();
     if (state.sheetId) openPlace(state.sheetId, true);
@@ -361,6 +361,7 @@
       '<div class="sheet-title"><h2 id="sheet-title">' + esc(p.n) + '</h2><p>' + esc([p.k, town(t) || t['addr:county']].filter(Boolean).join(' · ')) +
       (state.user ? ' · ' + fmtKm(km(state.user, [p.la, p.lo])) + ' away' : '') + '</p></div>' +
       '<button class="close" type="button" id="close" aria-label="Close">' + ico('close') + '</button></div>';
+    if (p.ds) h += '<p class="lede">' + esc(p.ds) + '</p>';
 
     var extra = [t['dog:note'], t['dog:description'], t['dog:conditional'] ? 'Conditions: ' + t['dog:conditional'] : '', p.w && p.w.n].filter(Boolean);
     h += '<div class="policy p-' + p.d + '"><strong>' + esc(pol.label) + '</strong><p>' + esc(pol.note) + '</p>' +

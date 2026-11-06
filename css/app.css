@@ -289,6 +289,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 }
 .close svg { width: 20px; height: 20px; }
 
+.lede { margin: 12px 0 0; font-size: 1rem; line-height: 1.45; color: var(--ink); text-wrap: pretty; }
+
 .policy {
   margin-top: 14px; border-radius: var(--r); padding: 12px 14px;
   background: color-mix(in srgb, var(--field) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--field) 25%, transparent);

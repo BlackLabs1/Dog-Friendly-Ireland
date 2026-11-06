@@ -241,11 +241,13 @@
     var inArea = state.areaOnly && map;
     if (inArea) { var b = map.getBounds(); list = list.filter(function (p) { return b.contains([p.la, p.lo]); }); }
     list.forEach(function (p) { p._d = km(from, [p.la, p.lo]); });
-    list.sort(function (a, b) { return a._d - b._d; });
+    // Events are listed soonest first; everything else nearest first
+    if (state.cat === 'event') list.sort(function (a, b) { return a.ev.s < b.ev.s ? -1 : a.ev.s > b.ev.s ? 1 : a._d - b._d; });
+    else list.sort(function (a, b) { return a._d - b._d; });
     var shown = list.slice(0, state.listLimit);
     var n = list.length.toLocaleString('en-IE');
-    var where = inArea ? ' in the map area' : (state.user ? ', nearest first' : ' across Ireland, nearest the map centre first');
-    $('list-count').innerHTML = '<strong>' + n + '</strong> ' + (list.length === 1 ? 'place' : 'places') + esc(where) +
+    var where = inArea ? ' in the map area' : (state.cat === 'event' ? ', soonest first' : (state.user ? ', nearest first' : ' across Ireland, nearest the map centre first'));
+    $('list-count').innerHTML = '<strong>' + n + '</strong> ' + (state.cat === 'event' ? (list.length === 1 ? 'upcoming event' : 'upcoming events') : (list.length === 1 ? 'place' : 'places')) + esc(where) +
       (inArea ? ' · <a href="#list" id="show-all">Show all</a>' : '');
     $('list').innerHTML = shown.length ? shown.map(function (p) { return cardHtml(p, from); }).join('') :
       '<li class="empty"><p><strong>Nothing matches.</strong></p><p>Try a different search, or choose Everything.</p></li>';

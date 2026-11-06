@@ -25,6 +25,7 @@
   ];
 
   var CATEGORIES = [
+    { id: 'event',      label: 'Dog events',                    short: 'Event',           color: '#f08c00' },
     { id: 'dogpark',    label: 'Dog parks',                     short: 'Dog park',        color: '#2b8a3e' },
     { id: 'vet',        label: 'Vets',                          short: 'Vet',             color: '#e03131' },
     { id: 'petshop',    label: 'Pet shops & groomers',          short: 'Pet shop',        color: '#e67700' },

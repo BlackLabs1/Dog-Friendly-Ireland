@@ -41,6 +41,15 @@
     var d = new Date(s); if (isNaN(d)) return s;
     return d.toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' });
   }
+  // Event dates: "Sat 14 Nov 2026", or "Sat 14 – Sun 15 Nov 2026" for a range
+  function fmtDay(s, year) {
+    var d = new Date(s + 'T12:00:00'); if (isNaN(d)) return s;
+    return d.toLocaleDateString('en-IE', year ? { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' } : { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+  function eventWhen(ev) {
+    if (!ev.e || ev.e === ev.s) return fmtDay(ev.s, true);
+    return fmtDay(ev.s, ev.s.slice(0, 4) !== ev.e.slice(0, 4)) + ' – ' + fmtDay(ev.e, true);
+  }
   function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
   // ---------- IndexedDB cache (data is too big for localStorage) ----------
@@ -122,6 +131,9 @@
 
   function setData(d) {
     state.meta = d;
+    // Events are temporary places: hide any that have finished (the nightly build also drops them)
+    var today = new Date().toISOString().slice(0, 10);
+    d.places = d.places.filter(function (p) { return !p.ev || (p.ev.e || p.ev.s) >= today; });
     state.places = d.places;
     state.byId = {};
     d.places.forEach(function (p) { state.byId[p.id] = p; p._s = (p.n + ' ' + town(p.t) + ' ' + (p.t['addr:county'] || '') + ' ' + p.k + ' ' + (p.t.cuisine || '') + ' ' + (p.ds || '')).toLowerCase(); });
@@ -215,7 +227,7 @@
   // ---------- list ----------
   function cardHtml(p, from) {
     var c = P.CAT_BY_ID[p.c], pol = P.POLICIES[p.d];
-    var where = [p.k, town(p.t) || p.t['addr:county'], p.w && p.w.v === 'unconfirmed' ? 'not yet confirmed' : ''].filter(Boolean).join(' · ');
+    var where = [p.ev ? eventWhen(p.ev) : p.k, town(p.t) || p.t['addr:county'], p.w && p.w.v === 'unconfirmed' ? 'not yet confirmed' : ''].filter(Boolean).join(' · ');
     var dist = from ? fmtKm(km(from, [p.la, p.lo])) : '';
     return '<li><button class="card" type="button" data-id="' + p.id + '" style="--dot:' + c.color + '">' +
       '<span class="dot"><svg viewBox="0 0 64 64"><use href="#paw"/></svg></span>' +
@@ -382,6 +394,11 @@
       '<button class="act" type="button" id="act-share">' + ico('share') + 'Share</button></div>';
 
     var facts = '';
+    if (p.ev) {
+      facts += fact('clock', 'When', esc(eventWhen(p.ev)) + (p.ev.tm ? '<br>' + esc(p.ev.tm) : ''));
+      if (p.ev.v) facts += fact('pin', 'Venue', esc(p.ev.v));
+      if (p.ev.pr) facts += fact('info', 'Tickets', esc(p.ev.pr));
+    }
     var addr = addressOf(t);
     if (addr) facts += fact('pin', 'Address', esc(addr) + ' <button class="copy" type="button" data-copy="' + esc(addr) + '">Copy</button>');
     if (t.opening_hours) facts += fact('clock', t['opening_hours:source'] === 'website' ? 'Opening hours (from their website)' : 'Opening hours', hoursHtml(t.opening_hours));

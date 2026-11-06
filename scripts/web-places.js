@@ -171,4 +171,4 @@ async function buildWebPlaces(osmById, extraRows = [], log = console.log) {
   return { places: out, merged };
 }
 
-module.exports = { buildWebPlaces, parseCsv };
+module.exports = { buildWebPlaces, parseCsv, nominatim, hash, norm, NI };

@@ -10,6 +10,7 @@ const path = require('path');
 const P = require('../js/places.js');
 const { buildWebPlaces } = require('./web-places.js');
 const { loadSuggestions } = require('./suggestions.js');
+const { buildEvents } = require('./events.js');
 const { nameAndPlace } = require('./reverse.js');
 const { addMedia } = require('./media.js');
 const { applyWebsiteFacts } = require('./website-facts.js');
@@ -169,12 +170,14 @@ function dedupe(list) {
     });
     console.log('Moved', moved, 'markers by hand');
   }
+  // Dog events (data/events.csv): temporary places, added after merging so they never merge into the venue itself
+  places = places.concat(await buildEvents());
   // data/descriptions.json: a short description of each place, written from its sources (id -> text)
   const descFile = path.join(DATA, 'descriptions.json');
   if (fs.existsSync(descFile)) {
     const desc = JSON.parse(fs.readFileSync(descFile, 'utf8'));
     let n = 0;
-    places.forEach(p => { if (desc[p.id]) { p.ds = desc[p.id]; n++; } });
+    places.forEach(p => { if (desc[p.id] && !p.ds) { p.ds = desc[p.id]; n++; } });
     console.log('Added descriptions to', n, 'places');
   }
   const out = {

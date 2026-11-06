@@ -146,6 +146,7 @@ async function buildWebPlaces(osmById, extraRows = [], log = console.log) {
       if (r.found_in && r.found_in !== r.source) existing.w.f = r.found_in;
       if (r.checked) existing.w.c = r.checked;
       if (!existing.t.dog && existing.d !== 'service') existing.d = policy;
+      if (r.description && !existing.ds) existing.ds = r.description;
       merged++;
       continue;
     }
@@ -165,6 +166,7 @@ async function buildWebPlaces(osmById, extraRows = [], log = console.log) {
       w: Object.assign({ s: src, n: r.note || '', a: g.approx, v: r.by ? 'suggested' : (r.verified || 'unconfirmed') },
         r.by ? { by: r.by } : {}, r.photo ? { ph: r.photo } : {}, r.found_in && r.found_in !== r.source ? { f: r.found_in } : {}, r.checked ? { c: r.checked } : {})
     });
+    if (r.description) out[out.length - 1].ds = r.description;
   }
   fs.writeFileSync(CACHE, JSON.stringify(cache));
   log(`Researched places: ${rows.length} listed, ${out.length} added, ${merged} matched existing map places, ${approx} at town centre, ${failed} not found, ${looked} new lookups`);

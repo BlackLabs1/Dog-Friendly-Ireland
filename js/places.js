@@ -29,7 +29,7 @@
     { id: 'dogpark',    label: 'Dog parks',                     short: 'Dog park',        color: '#2b8a3e' },
     { id: 'vet',        label: 'Vets',                          short: 'Vet',             color: '#e03131' },
     { id: 'petshop',    label: 'Pet shops & groomers',          short: 'Pet shop',        color: '#e67700' },
-    { id: 'care',       label: 'Boarding, daycare & training',  short: 'Dog care',        color: '#7048e8' },
+    { id: 'care',       label: 'Pet sitting, boarding & training', short: 'Dog care',        color: '#7048e8' },
     { id: 'rescue',     label: 'Rescues & shelters',            short: 'Rescue',          color: '#c2255c' },
     { id: 'cafe',       label: 'Cafés',                         short: 'Café',            color: '#8d5524' },
     { id: 'pub',        label: 'Pubs & bars',                   short: 'Pub',             color: '#1971c2' },

@@ -16,20 +16,21 @@ for p in P:
     t=p['t']; c=C.get(p['id'],{})
     town=t.get('addr:town') or t.get('addr:city') or t.get('addr:village') or ''
     street=t.get('addr:street',''); pc=t.get('addr:postcode','')
+    mobile=(p.get('ds','')+' '+w.get('n','')).lower().find('pet sitter')>=0 or w.get('n','').startswith('Pet sitter')
     known='Street/townland and Eircode/postcode' if street and pc else 'Street or townland only' if street else 'Eircode/postcode only' if pc else 'Town only'
     rows.append([p['n'],CAT.get(p['c'],p['c']),town,(t.get('addr:county') or '').replace('Co. ','').replace('County ',''),street,pc,known,
-        t.get('phone') or c.get('phone',''), c.get('email',''), t.get('website') or c.get('website',''),
+        t.get('phone') or t.get('contact:phone') or c.get('phone',''), t.get('email') or t.get('contact:email') or c.get('email',''), t.get('website') or t.get('contact:website') or c.get('website',''),
         {'business':'Business','official':'Tourism guide','team':'Our team','unconfirmed':'Not yet confirmed','suggested':'Suggested'}.get(w.get('v'),w.get('v','')),
-        (w.get('s') or [''])[0], f"https://www.google.com/maps/search/?api=1&query={p['la']},{p['lo']}", p['id']])
+        (w.get('s') or [''])[0], 'No: mobile pet sitter, town is enough' if mobile else 'Yes', f"https://www.google.com/maps/search/?api=1&query={p['la']},{p['lo']}", p['id']])
 order={'Town only':0,'Street or townland only':1,'Eircode/postcode only':2,'Street/townland and Eircode/postcode':3}
 rows.sort(key=lambda r:(r[3],r[2],r[0]))
-H=['Name','Type','Town','County','Street / townland','Eircode / postcode','What we know','Phone','Email','Website','Confirmed by','Source','Current pin (town centre)','App id']
+H=['Name','Type','Town','County','Street / townland','Eircode / postcode','What we know','Phone','Email','Website','Confirmed by','Source','Needs exact location?','Current pin (town centre)','App id']
 wb=Workbook(); ws=wb.active; ws.title='Pinned at town'
 ws.append(H)
 for r in rows: ws.append(r)
-for i,wd in enumerate([34,14,16,12,26,14,24,16,26,34,16,40,22,14],1): ws.column_dimensions[get_column_letter(i)].width=wd
+for i,wd in enumerate([34,14,16,12,26,14,24,16,26,34,16,40,22,18,14],1): ws.column_dimensions[get_column_letter(i)].width=wd
 for r in ws.iter_rows(min_row=2):
-    r[12].hyperlink=r[12].value; r[12].value='Open map'; r[12].font=Font(color='0563C1',underline='single')
+    r[13].hyperlink=r[13].value; r[13].value='Open map'; r[13].font=Font(color='0563C1',underline='single')
     if r[9].value: r[9].hyperlink=r[9].value; r[9].font=Font(color='0563C1',underline='single')
 for c in ws[1]: c.font=Font(bold=True,color='FFFFFF'); c.fill=PatternFill('solid',fgColor='1F5E3B'); c.alignment=Alignment(wrap_text=True,vertical='top')
 ws.freeze_panes='B2'
@@ -39,10 +40,11 @@ s.append(['Places pinned only at their town or townland']); s['A1'].font=Font(bo
 s.append([]); s.append(['What we know','Places'])
 for k in order: s.append([k,f'=COUNTIF(\'Pinned at town\'!G:G,"{k}")'])
 s.append(['Total',f'=SUM(B4:B{3+len(order)})'])
+s.append(['Of which mobile pet sitters (no exact location needed)',f'=COUNTIF(\'Pinned at town\'!M:M,"No*")'])
 s.append([]); s.append(['By type','Places'])
 for k in sorted({r[1] for r in rows}): s.append([k,f'=COUNTIF(\'Pinned at town\'!B:B,"{k}")'])
 s.append([]); s.append(['How to fix one: send me the exact address or Eircode (or drag the pin in the app as owner), and I will update it.'])
 s.column_dimensions['A'].width=44; s.column_dimensions['B'].width=10
-for r in (3,10): 
+for r in (3,11): 
     for c in s[r]: c.font=Font(bold=True)
 out=R+'research/Places-pinned-at-town.xlsx'; wb.save(out); print(len(rows),out)

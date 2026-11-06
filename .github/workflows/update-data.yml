@@ -38,10 +38,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/
           git diff --cached --quiet || git commit -m "Update places"
-          # If something newer was saved while this ran, keep the newer copy and skip saving
-          git pull --rebase origin main || { git rebase --abort; echo "Newer data already saved; skipping."; exit 0; }
+          # Another run may have saved while this one worked (an older, cancelled run can still save at the last moment).
+          # Keep other people's changes, but where the generated data clashes keep this run's copy: it is the newest build.
+          git pull --rebase -X theirs origin main || { git rebase --abort; echo "Couldn't combine with newer changes; skipping save."; exit 0; }
           # GitHub sometimes refuses a push for a moment; try a few times
-          for i in 1 2 3 4; do git push && break; sleep 20; git pull --rebase origin main || { git rebase --abort; exit 0; }; done
+          for i in 1 2 3 4; do git push && break; sleep 20; git pull --rebase -X theirs origin main || { git rebase --abort; exit 0; }; done
       - uses: actions/configure-pages@v5
       - name: Stamp the app version (so phones pick up any change to the app's code)
         run: |

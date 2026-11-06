@@ -2,7 +2,7 @@
 <html lang="en-IE">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Dog Friendly Ireland</title>
 <meta name="description" content="Find dog-friendly cafés, pubs, places to stay, vets, pet shops, dog parks and more across Ireland.">
 <meta name="theme-color" content="#0f5c3d" media="(prefers-color-scheme: light)">
@@ -193,13 +193,27 @@
             <button class="btn ghost" id="owner-disconnect" type="button" hidden>Disconnect this device</button>
           </div>
           <p class="small">The key stays on this device and is only ever sent to GitHub.</p>
+          <a class="btn" href="#review" id="owner-review">Review suggestions and reports</a>
         </div>
 
         <p class="credit">Map data © OpenStreetMap contributors, available under the Open Database Licence. Street map by OpenFreeMap and OpenMapTiles; walking map by OpenTopoMap (CC BY-SA). Routes by FOSSGIS. Photos from Wikimedia Commons, credited on each photo under its own licence. Some photos, phone numbers and websites from Fáilte Ireland open data (CC BY 4.0). Descriptions from Wikipedia (CC BY-SA) where shown.</p>
       </div>
     </section>
-  </main>
+  
 
+  <section class="view view-review" id="view-review" aria-label="Review suggestions" hidden>
+      <div class="prose review">
+        <h2>Review suggestions</h2>
+        <p>New places, edits and reports sent from the app. Nothing appears in the app until you approve it; approved changes go live in about a minute.</p>
+        <div class="review-tabs" role="tablist">
+          <button type="button" class="chip" data-rv="pending" aria-pressed="true">Waiting <span id="rv-n-pending"></span></button>
+          <button type="button" class="chip" data-rv="done" aria-pressed="false">Done <span id="rv-n-done"></span></button>
+        </div>
+        <p id="rv-status" class="small">Loading…</p>
+        <ul class="rv-list" id="rv-list"></ul>
+      </div>
+    </section>
+  </main>
   <nav class="tabs" aria-label="Sections">
     <a href="#map" data-view="map">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg><span>Map</span></a>
@@ -239,6 +253,7 @@
 <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
 <script src="js/config.js"></script>
 <script src="js/places.js"></script>
+<script src="js/feedback-key.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

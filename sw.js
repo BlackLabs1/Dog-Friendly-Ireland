@@ -1,7 +1,7 @@
 /* Offline support: the app itself works offline; map tiles need a connection. */
-var VERSION = 'dfi-v16';
+var VERSION = 'dfi-v17';
 var SHELL = [
-  './', 'index.html', 'css/app.css', 'js/config.js', 'js/places.js', 'js/app.js', 'manifest.webmanifest',
+  './', 'index.html', 'css/app.css', 'js/config.js', 'js/places.js', 'js/feedback-key.js', 'js/app.js', 'manifest.webmanifest',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js',

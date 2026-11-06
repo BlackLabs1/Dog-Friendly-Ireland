@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const P = require('../js/places.js');
 const { buildWebPlaces } = require('./web-places.js');
-const { loadSuggestions } = require('./suggestions.js');
+const { loadSuggestions, loadFeedback, applyFeedback, readSheets } = require('./suggestions.js');
 const { buildEvents } = require('./events.js');
 const { nameAndPlace } = require('./reverse.js');
 const { addMedia } = require('./media.js');
@@ -142,7 +142,8 @@ function dedupe(list) {
     byId[c.id] = c;
   });
     await nameAndPlace(osm.places);
-  const web = await buildWebPlaces(byId, await loadSuggestions());
+  const sheetRows = await readSheets(console.log);
+  const web = await buildWebPlaces(byId, await loadSuggestions(console.log, sheetRows));
   const closedFile = path.join(DATA, 'closed.json');
   const closed = fs.existsSync(closedFile) ? JSON.parse(fs.readFileSync(closedFile, 'utf8')) : {};
   // data/removed.txt: places removed by hand (one id per line, then a note)
@@ -180,6 +181,8 @@ function dedupe(list) {
     places.forEach(p => { if (desc[p.id] && !p.ds) { p.ds = desc[p.id]; n++; } });
     console.log('Added descriptions to', n, 'places');
   }
+  // Approved reports and edits from place pages (moderated by the owner)
+  places = applyFeedback(places, await loadFeedback(console.log, sheetRows));
   const out = {
     generated: osm.generated,
     built: new Date().toISOString(),

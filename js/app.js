@@ -140,6 +140,7 @@
     $('data-meta').textContent = d.places.length.toLocaleString('en-IE') + ' places, from OpenStreetMap data as of ' + fmtDate(d.generated) + '.';
     renderChips(); refresh();
     if (state.sheetId) openPlace(state.sheetId, true);
+    if (state.view === 'review') renderReview();
   }
 
   // ---------- filtering ----------
@@ -271,6 +272,8 @@
 
   // ---------- place sheet ----------
   var ICON = {
+    edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+    flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
     pin: '<path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
@@ -452,9 +455,11 @@
     var webOnly = p.w && 'a' in p.w && !/^[nwr]\d/.test(p.id);
     var ownerMove = owner.token ? '<span class="owner-btns"><button class="btn ghost" type="button" id="act-move">Move this marker</button>' +
       '<button class="btn ghost danger" type="button" id="act-delete">Delete this place</button></span>' : '';
+    h += '<div class="fb-btns"><button class="btn ghost" type="button" id="act-edit">' + ico('edit') + 'Suggest an edit</button>' +
+      '<button class="btn ghost" type="button" id="act-report">' + ico('flag') + 'Report this place</button></div>' +
+      '<div class="fb-panel" id="fb-panel" hidden></div>';
     h += '<p class="fix">' + (t.check_date ? 'Details last checked ' + esc(fmtDate(t.check_date)) + '. ' : '') +
-      (webOnly ? 'Something wrong or out of date? <a href="' + esc(reportUrl(p)) + '" target="_blank" rel="noopener">Report it</a>, or <a href="' + esc(osmUrl(p)) + '" target="_blank" rel="noopener">add it to OpenStreetMap</a>.'
-               : 'Something wrong or missing? <a href="' + esc(osmUrl(p)) + '" target="_blank" rel="noopener">Fix this on OpenStreetMap</a>.') + ownerMove + '</p>';
+      (webOnly ? '' : 'Map details come from OpenStreetMap, where anyone can <a href="' + esc(osmUrl(p)) + '" target="_blank" rel="noopener">fix them</a>.') + ownerMove + '</p>';
     return h + '</div>';
   }
 
@@ -606,8 +611,8 @@
   }
   function ownerUi() {
     var on = !!owner.token;
-    $('owner-token-row').hidden = on; $('owner-connect').hidden = on; $('owner-disconnect').hidden = !on;
-    $('owner-status').textContent = on ? 'This device can move map markers. Open any place and tap "Move this marker".'
+    $('owner-token-row').hidden = on; $('owner-connect').hidden = on; $('owner-disconnect').hidden = !on; $('owner-review').hidden = !on;
+    $('owner-status').textContent = on ? 'This device can move map markers, delete places and review suggestions. Open any place and tap "Move this marker".'
       : 'Connect this device to the app\'s GitHub repository to move map markers. Only someone with your GitHub key can do this.';
   }
   function initOwner() {
@@ -698,6 +703,198 @@
     }).catch(saveError).then(function () { b.disabled = false; b.textContent = 'Save position'; });
   }
 
+
+  // ---------- suggest an edit / report a place (sent to the suggestions sheet; nothing changes until the owner approves) ----------
+  var REPORTS = ['Permanently closed', 'Dogs aren\'t allowed', 'Wrong location on the map', 'Wrong or out-of-date details', 'It\'s listed twice', 'Something else'];
+  var DOG_EDIT = ['No change', 'Inside and outside', 'Inside', 'Outside only', 'On a lead', 'Not allowed'];
+  function placeLink(p) { return location.origin + location.pathname + '#place-' + p.id; }
+  function fbField(id, label, val, type, hint) {
+    return '<label class="field" for="' + id + '"><span>' + label + '</span><input id="' + id + '" ' + (type ? 'type="' + type + '" ' : '') +
+      'maxlength="200" autocomplete="off" value="' + esc(val || '') + '" data-was="' + esc(val || '') + '"' + (hint ? ' placeholder="' + esc(hint) + '"' : '') + '></label>';
+  }
+  function openFeedback(kind) {
+    var p = state.byId[state.sheetId]; if (!p) return;
+    var t = p.t || {}, panel = $('fb-panel'), h;
+    if (kind === 'edit') {
+      h = '<form class="fb-form" id="fb-form" data-kind="edit" novalidate><h3>Suggest an edit</h3>' +
+        '<p class="small">Change anything that\'s wrong or missing. We check every suggestion before it appears in the app.</p>' +
+        fbField('fb-name', 'Name', p.n) +
+        fbField('fb-address', 'Street address', [t['addr:housenumber'], t['addr:street']].filter(Boolean).join(' ')) +
+        fbField('fb-town', 'Town or area', town(t)) +
+        fbField('fb-phone', 'Phone', t.phone || t['contact:phone'], 'tel') +
+        fbField('fb-website', 'Website', t.website || t['contact:website'], 'url') +
+        fbField('fb-hours', 'Opening hours', t.opening_hours, '', 'e.g. Mon–Fri 8am–5pm; Sat 9am–3pm') +
+        '<label class="field" for="fb-dogs"><span>Where are dogs allowed?</span><select id="fb-dogs">' +
+        DOG_EDIT.map(function (d) { return '<option>' + d + '</option>'; }).join('') + '</select></label>' +
+        '<label class="field" for="fb-other"><span>Anything else dog owners should know?</span><textarea id="fb-other" rows="3" maxlength="500" placeholder="Water bowls, dog menu, which areas dogs can use…"></textarea></label>';
+    } else {
+      h = '<form class="fb-form" id="fb-form" data-kind="report" novalidate><h3>Report this place</h3>' +
+        '<fieldset class="field"><legend>What\'s the problem?</legend><div class="choices fb-reasons">' +
+        REPORTS.map(function (r, i) { return '<label><input type="radio" name="fb-reason" value="' + esc(r) + '"' + (i ? '' : ' id="fb-reason-0"') + '> ' + esc(r) + '</label>'; }).join('') +
+        '</div></fieldset>' +
+        '<label class="field" for="fb-details"><span>Details</span><textarea id="fb-details" rows="3" maxlength="500" placeholder="What did you find? When were you there?"></textarea></label>';
+    }
+    h += '<label class="check" for="fb-owner"><input type="checkbox" id="fb-owner"> I own or work at this place</label>' +
+      '<p class="form-error" id="fb-error" role="alert" hidden></p>' +
+      '<div class="fb-actions"><button class="btn" type="submit" id="fb-send">Send for review</button><button class="btn ghost" type="button" id="fb-cancel">Cancel</button></div>' +
+      '<p class="small">Please don\'t include personal details.</p></form>';
+    panel.innerHTML = h; panel.hidden = false;
+    document.querySelector('.fb-btns').hidden = true;
+    $('fb-form').addEventListener('submit', sendFeedback);
+    var sh = $('sheet'); sh.scrollTo({ top: sh.scrollTop + panel.getBoundingClientRect().top - sh.getBoundingClientRect().top - 12, behavior: 'smooth' });
+  }
+  function closeFeedback() {
+    var panel = $('fb-panel'); if (!panel) return;
+    panel.hidden = true; panel.innerHTML = '';
+    var b = document.querySelector('.fb-btns'); if (b) b.hidden = false;
+  }
+  function sendFeedback(e) {
+    e.preventDefault();
+    var p = state.byId[state.sheetId], f = $('fb-form'), err = $('fb-error'); if (!p) return;
+    var kind = f.dataset.kind, type, dogs = '-', lines = [];
+    err.hidden = true;
+    if (kind === 'edit') {
+      [['fb-name', 'Name'], ['fb-address', 'Address'], ['fb-town', 'Town'], ['fb-phone', 'Phone'], ['fb-website', 'Website'], ['fb-hours', 'Opening hours']].forEach(function (x) {
+        var el = $(x[0]), v = el.value.trim().replace(/\s+/g, ' ');
+        if (v && v !== el.dataset.was) lines.push(x[1] + ': ' + v);
+      });
+      var d = $('fb-dogs').value; if (d !== 'No change') dogs = d; else dogs = 'No change';
+      var other = $('fb-other').value.trim().replace(/\s+/g, ' ');
+      if (other) lines.push('Other: ' + other);
+      if (!lines.length && dogs === 'No change') { err.textContent = 'Change at least one thing, or tell us what to add.'; err.hidden = false; return; }
+      type = 'Edit suggestion';
+    } else {
+      var r = f.querySelector('input[name="fb-reason"]:checked');
+      if (!r) { err.textContent = 'Choose what the problem is.'; err.hidden = false; $('fb-reason-0').focus(); return; }
+      var det = $('fb-details').value.trim().replace(/\s+/g, ' ');
+      if (det) lines.push('Details: ' + det);
+      type = 'Report: ' + r.value;
+    }
+    var cfg = (window.DFI_CONFIG || {}).suggestForm || {};
+    if (!cfg.action || !cfg.fields) { err.textContent = 'Sending isn\'t switched on yet. Please try again soon.'; err.hidden = false; return; }
+    var t = p.t || {};
+    var form = { name: p.n, town: town(t) || (t['addr:county'] || ''), county: (t['addr:county'] || '').replace(/^(Co\.|County)\s+/, ''),
+      type: type, dogs: dogs, link: placeLink(p), notes: lines.join('\n'), owner: $('fb-owner').checked ? 'Yes' : 'No' };
+    var body = new URLSearchParams();
+    Object.keys(cfg.fields).forEach(function (k) { if (form[k] != null) body.append(cfg.fields[k], form[k]); });
+    var btn = $('fb-send'); btn.disabled = true; btn.textContent = 'Sending…';
+    fetch(cfg.action, { method: 'POST', mode: 'no-cors', body: body }).then(function () {
+      $('fb-panel').innerHTML = '<div class="fb-thanks"><svg class="sent-paw" viewBox="0 0 64 64" aria-hidden="true"><use href="#paw"/></svg>' +
+        '<p><strong>Thanks!</strong> ' + (kind === 'edit' ? 'We\'ll check your changes before they appear in the app.' : 'We\'ll look into it.') + '</p></div>';
+    }, function () {
+      err.textContent = 'Couldn\'t send. Check your connection and try again.'; err.hidden = false;
+      btn.disabled = false; btn.textContent = 'Send for review';
+    });
+  }
+
+  // ---------- owner: review new places, edits and reports from the suggestions sheet ----------
+  var review = { tab: 'pending', items: null, decided: {} };
+  function parseCsvText(text) {
+    var rows = [], row = [], cell = '', q = false;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === ',') { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row); }
+    var head = rows.shift() || [];
+    return rows.filter(function (r) { return r.some(Boolean); }).map(function (r) { var o = {}; head.forEach(function (h, i) { o[h.trim()] = (r[i] || '').trim(); }); return o; });
+  }
+  function pick(r, re) { var k = Object.keys(r).filter(function (h) { return re.test(h); })[0]; return k ? r[k] : ''; }
+  function sheetCsv(u) {
+    // The sheet's export link; if the browser can't read it, try Google's query link for the same tab
+    return fetch(u, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); }).catch(function () {
+      var m = u.match(/\/d\/([\w-]+)\/export\?format=csv&gid=(\d+)/);
+      if (!m) throw new Error('unreadable');
+      return fetch('https://docs.google.com/spreadsheets/d/' + m[1] + '/gviz/tq?tqx=out:csv&gid=' + m[2], { cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); });
+    });
+  }
+  function loadReview() {
+    $('rv-status').textContent = 'Loading…'; $('rv-list').innerHTML = '';
+    var urls = fetch('scripts/suggestions-url.txt', { cache: 'no-store' }).then(function (r) { return r.text(); })
+      .then(function (t) { return t.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return /^https:/.test(l); }); });
+    var mod = gh('/contents/data/moderation.csv').then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (f) { return f ? parseCsvText(decodeURIComponent(escape(atob(f.content.replace(/\n/g, ''))))) : []; });
+    Promise.all([urls, mod]).then(function (a) {
+      review.decided = {};
+      a[1].forEach(function (r) { if (r.key) review.decided[r.key] = { d: r.decision, at: r.date }; });
+      var sheets = a[0];
+      return Promise.all(sheets.map(function (u) { return sheetCsv(u).then(parseCsvText).catch(function () { return null; }); })).then(function (lists) {
+        if (lists.every(function (l) { return !l; })) throw new Error('sheet');
+        review.items = [].concat.apply([], lists.filter(Boolean)).map(function (r) {
+          var type = pick(r, /type/i), link = pick(r, /link|website/i), notes = pick(r, /know|notes/i), name = pick(r, /name of the place|^name/i);
+          var key = window.feedbackKey(name, type, link, notes), sheetOk = pick(r, /approved/i);
+          return { r: r, key: key, name: name, type: type, link: link, notes: notes, when: pick(r, /timestamp/i),
+            kind: /^report/i.test(type) ? 'report' : /^edit suggestion/i.test(type) ? 'edit' : 'new',
+            id: (link.match(/#place-([\w-]+)/) || [])[1], sheet: /^y/i.test(sheetOk) ? 'approved' : /^n/i.test(sheetOk) ? 'rejected' : '' };
+        }).reverse();
+        renderReview();
+      });
+    }).catch(function (e) {
+      $('rv-status').innerHTML = e.message === 'sheet' ? 'Couldn\'t read the suggestions sheet from here. Open it in Google Sheets and type yes in the Approved column instead.'
+        : 'Couldn\'t load. Check your connection and that this device is connected in About.';
+    });
+  }
+  function statusOf(it) { var d = review.decided[it.key]; return d ? d.d : it.sheet; }
+  function renderReview() {
+    if (!review.items) return;
+    var pending = review.items.filter(function (it) { return !statusOf(it); }), done = review.items.filter(function (it) { return !!statusOf(it); });
+    $('rv-n-pending').textContent = '(' + pending.length + ')'; $('rv-n-done').textContent = '(' + done.length + ')';
+    document.querySelectorAll('[data-rv]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.rv === review.tab); });
+    var list = review.tab === 'pending' ? pending : done;
+    $('rv-status').textContent = list.length ? '' : (review.tab === 'pending' ? 'Nothing waiting. All caught up.' : 'Nothing decided yet.');
+    $('rv-list').innerHTML = list.map(reviewCard).join('');
+  }
+  function reviewCard(it) {
+    var p = it.id && state.byId[it.id], t = (p && p.t) || {}, rows = '', loading = !state.places.length;
+    var label = { report: 'Report', edit: 'Edit', 'new': 'New place' }[it.kind];
+    if (it.kind === 'new') {
+      [['Address', pick(it.r, /^address|town or area/i)], ['County', pick(it.r, /county/i)], ['Type', it.type], ['Dogs', pick(it.r, /dogs/i)],
+        ['Link', it.link], ['Notes', it.notes], ['Owner or staff', pick(it.r, /\bi own|work here/i)], ['Photo', pick(it.r, /^photo$/i) ? 'Yes' : '']]
+        .forEach(function (x) { if (x[1]) rows += '<tr><th>' + esc(x[0]) + '</th><td colspan="2">' + esc(x[1]) + '</td></tr>'; });
+    } else if (it.kind === 'edit') {
+      var cur = { Name: p && p.n, Address: t['addr:street'], Town: p && town(t), Phone: t.phone || t['contact:phone'], Website: t.website || t['contact:website'],
+        'Opening hours': t.opening_hours, Dogs: p && P.POLICIES[p.d] ? P.POLICIES[p.d].label : '' };
+      it.notes.split('\n').forEach(function (l) {
+        var m = l.match(/^([^:]+):\s*(.*)$/); if (!m) return;
+        rows += '<tr><th>' + esc(m[1]) + '</th><td class="was">' + esc(cur[m[1]] || '') + '</td><td class="now">' + esc(m[2]) + '</td></tr>';
+      });
+      var dg = pick(it.r, /dogs/i);
+      if (dg && !/no change|^-$/i.test(dg)) rows += '<tr><th>Dogs</th><td class="was">' + esc(cur.Dogs || '') + '</td><td class="now">' + esc(dg) + '</td></tr>';
+      if (rows) rows = '<tr class="sub"><th></th><td>Now</td><td>Suggested</td></tr>' + rows;
+    } else {
+      rows += '<tr><th>Problem</th><td colspan="2"><strong>' + esc(it.type.replace(/^report:\s*/i, '')) + '</strong></td></tr>';
+      if (it.notes) rows += '<tr><th>Details</th><td colspan="2">' + esc(it.notes.replace(/^Details:\s*/, '')) + '</td></tr>';
+    }
+    if (pick(it.r, /\bi own|work here/i) === 'Yes' && it.kind !== 'new') rows += '<tr><th>From</th><td colspan="2">The owner or staff</td></tr>';
+    var st = statusOf(it), effect = it.kind === 'report' && /closed|not allowed|aren.t allowed/i.test(it.type) ? 'Approving removes this place from the app.'
+      : it.kind === 'report' ? 'Approving only marks it as dealt with: fix it yourself (for example move the marker).' : '';
+    return '<li class="rv-card" data-kind="' + it.kind + '"><div class="rv-head"><span class="rv-kind">' + label + '</span>' +
+      (it.when ? '<span class="small">' + esc(it.when) + '</span>' : '') + '</div>' +
+      '<h3>' + (p ? '<a href="#place-' + esc(p.id) + '">' + esc(it.name) + '</a>' : esc(it.name)) + '</h3>' +
+      (it.kind !== 'new' && !p && !loading ? '<p class="small">This place is no longer in the app.</p>' : '') +
+      (rows ? '<table class="rv-table">' + rows + '</table>' : '') + (effect && !st ? '<p class="small">' + effect + '</p>' : '') +
+      (st ? '<p class="rv-done ' + st + '">' + (st === 'approved' ? 'Approved' : 'Rejected') + '</p>' +
+        '<button class="link-btn" type="button" data-rv-act="' + (st === 'approved' ? 'rejected' : 'approved') + '" data-key="' + it.key + '">Change to ' + (st === 'approved' ? 'rejected' : 'approved') + '</button>'
+        : '<div class="rv-actions"><button class="btn" type="button" data-rv-act="approved" data-key="' + it.key + '">Approve</button>' +
+          '<button class="btn ghost danger" type="button" data-rv-act="rejected" data-key="' + it.key + '">Reject</button></div>') + '</li>';
+  }
+  function decide(key, decision, btn) {
+    var it = (review.items || []).filter(function (x) { return x.key === key; })[0]; if (!it || !owner.token) return;
+    btn.disabled = true;
+    var day = new Date().toISOString().slice(0, 10);
+    var line = [key, decision, day, '"' + ((it.kind === 'new' ? 'New: ' : it.kind === 'edit' ? 'Edit: ' : it.type + ': ') + it.name).replace(/"/g, '""') + '"'].join(',');
+    appendToRepo('data/moderation.csv', line, (decision === 'approved' ? 'Approve ' : 'Reject ') + (it.kind === 'new' ? 'suggestion' : it.kind) + ': ' + it.name).then(function () {
+      review.decided[key] = { d: decision, at: day };
+      renderReview();
+      toast(decision === 'approved' ? 'Approved. It will be in the app in about a minute.' : 'Rejected. It won\'t appear in the app.');
+    }).catch(function (err) { saveError(err); btn.disabled = false; });
+  }
+
   // ---------- routing ----------
   function route() {
     var h = location.hash.replace(/^#/, '');
@@ -705,17 +902,19 @@
     closePlace();
     if (h === 'owner') { owner.show = true; h = 'about'; }
     $('owner-tools').hidden = !(owner.show || owner.token);
-    var v = /^(map|list|saved|suggest|about)$/.test(h) ? h : 'map';
+    if (h === 'review' && !owner.token) h = 'about';
+    var v = /^(map|list|saved|suggest|about|review)$/.test(h) ? h : 'map';
     if (v !== 'list') state.areaOnly = false;
     state.view = v;
     $('app').setAttribute('data-view', v);
-    ['map', 'list', 'saved', 'suggest', 'about'].forEach(function (x) { $('view-' + x).hidden = x !== v; });
+    ['map', 'list', 'saved', 'suggest', 'about', 'review'].forEach(function (x) { $('view-' + x).hidden = x !== v; });
     document.querySelectorAll('.tabs a').forEach(function (a) {
-      if (a.dataset.view === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      if (a.dataset.view === (v === 'review' ? 'about' : v)) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
     if (v === 'map' && map) setTimeout(function () { map.invalidateSize(); }, 0);
     if (v === 'list') renderList();
     if (v === 'saved') renderSaved();
+    if (v === 'review') loadReview();
   }
 
   function closeToView() { location.replace('#' + state.view); }
@@ -751,6 +950,13 @@
       if (e.target.closest('#route-close')) { endRoute(); return; }
       if (e.target.closest('#act-share')) { share(state.sheetId); return; }
       if (e.target.closest('#act-delete')) { deletePlace(state.sheetId); return; }
+      if (e.target.closest('#act-edit')) { openFeedback('edit'); return; }
+      if (e.target.closest('#act-report')) { openFeedback('report'); return; }
+      if (e.target.closest('#fb-cancel')) { closeFeedback(); return; }
+      var rv = e.target.closest('[data-rv-act]');
+      if (rv) { decide(rv.dataset.key, rv.dataset.rvAct, rv); return; }
+      var rvt = e.target.closest('[data-rv]');
+      if (rvt) { review.tab = rvt.dataset.rv; renderReview(); return; }
       var cp = e.target.closest('[data-copy]');
       if (cp) { copy(cp.dataset.copy); return; }
       if (e.target.id === 'show-all') { e.preventDefault(); state.areaOnly = false; renderList(); }
@@ -871,6 +1077,8 @@
   // ---------- start ----------
   function start() {
     initMap(); bind(); initSuggest(); initOwner(); route();
+    window.addEventListener('scroll', function () { if (window.scrollY || window.scrollX) window.scrollTo(0, 0); }, { passive: true });
+    $('app').addEventListener('scroll', function () { if (this.scrollTop || this.scrollLeft) { this.scrollTop = 0; this.scrollLeft = 0; } }, { passive: true });
     loadData().then(function (d) {
       setData(d);
       $('loading').hidden = true;

@@ -35,8 +35,14 @@
 }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; }
+/* Locked like an app: the page itself never scrolls, pans or zooms; only the list and panels inside it scroll. */
+html, body { height: 100%; margin: 0; overflow: hidden; overflow: clip; overscroll-behavior: none; }
+html { position: fixed; inset: 0; }
 body {
+  position: fixed; inset: 0;
+  touch-action: pan-x pan-y;          /* no pinch-zoom or double-tap zoom of the page (the map still zooms) */
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   background: var(--bg);
   color: var(--ink);
   font: 16px/1.45 var(--font-body);
@@ -49,12 +55,14 @@ a { color: var(--field); }
 [hidden] { display: none !important; }
 svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
+input, textarea, select, [contenteditable], .sheet p, .sheet dd, .lede, .policy { user-select: text; -webkit-user-select: text; }
+.leaflet-container { touch-action: none; }
 .app {
-  height: 100dvh;
+  position: fixed; inset: 0;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  position: relative;
   overflow: hidden;
+  overflow: clip;        /* clip, not just hide: the browser can't shift the whole app when it scrolls a field into view */
 }
 
 /* ---------- Header ---------- */
@@ -102,8 +110,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .chip b { font-weight: 400; opacity: .75; font-variant-numeric: tabular-nums; }
 
 /* ---------- Views ---------- */
-.views { position: relative; min-height: 0; }
-.view { position: absolute; inset: 0; overflow-y: auto; }
+.views { position: relative; min-height: 0; overflow: hidden; overflow: clip; }
+.view { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .view-map { overflow: hidden; }
 .map { position: absolute; inset: 0; background: var(--surface-2); z-index: 0; }  /* keeps Leaflet's own layers and controls below the place sheet */
 @media (prefers-color-scheme: dark) {
@@ -406,3 +414,51 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .suggest .btn { justify-self: start; padding: 12px 26px; font-size: 1rem; }
 .sent { text-align: center; padding-top: 48px; }
 .sent-paw { width: 56px; height: 56px; fill: var(--tag); stroke: none; }
+
+/* ---------- Suggest an edit / report a place ---------- */
+.fb-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.fb-btns .btn { margin: 0; padding: 9px 14px; font-size: .92rem; display: inline-flex; align-items: center; gap: 6px; }
+.fb-btns svg { width: 18px; height: 18px; }
+.fb-panel { margin-top: 16px; border: 1.5px solid var(--line); border-radius: var(--r); padding: 14px; background: var(--surface); }
+.fb-form { display: grid; gap: 12px; }
+.fb-form h3 { margin: 0; font: 800 1.15rem/1.2 var(--font-display); }
+.fb-form .small { margin: 0; }
+.fb-reasons { flex-direction: column; align-items: stretch; }
+.fb-reasons label { border-radius: 12px; }
+.fb-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.fb-actions .btn { margin: 0; }
+.fb-thanks { display: flex; gap: 12px; align-items: center; }
+.fb-thanks .sent-paw { width: 40px; height: 40px; flex: none; }
+.fb-thanks p { margin: 0; }
+
+/* ---------- Owner: review suggestions ---------- */
+.app[data-view="review"] .search, .app[data-view="review"] .chips { display: none; }
+.review-tabs { display: flex; gap: 8px; }
+.review-tabs .chip { background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); }
+.review-tabs .chip[aria-pressed="true"] { background: var(--field); color: var(--field-ink); border-color: var(--field); }
+.rv-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.rv-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.rv-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.rv-kind { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); }
+.rv-card[data-kind="report"] .rv-kind { background: #ffe3e3; color: #a51d2d; }
+.rv-card[data-kind="edit"] .rv-kind { background: #e7f0ff; color: #1c4f9c; }
+.rv-card[data-kind="new"] .rv-kind { background: #e3f6ea; color: #1b6b3f; }
+.rv-card h3 { margin: 8px 0 6px; font: 700 1.1rem/1.25 var(--font-body); overflow-wrap: anywhere; }
+.rv-table { width: 100%; border-collapse: collapse; font-size: .92rem; margin: 6px 0 10px; }
+.rv-table th { text-align: left; color: var(--ink-2); font-weight: 700; padding: 5px 8px 5px 0; vertical-align: top; width: 28%; }
+.rv-table td { padding: 5px 6px; vertical-align: top; overflow-wrap: anywhere; }
+.rv-table .was { color: var(--ink-2); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ink-2) 50%, transparent); }
+.rv-table .now { font-weight: 700; background: color-mix(in srgb, var(--field) 10%, transparent); border-radius: 6px; }
+.rv-table tr.sub td { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); font-weight: 700; background: none; text-decoration: none; }
+.rv-actions { display: flex; gap: 8px; }
+.rv-actions .btn { margin: 0; flex: 1; }
+.rv-done { margin: 0 0 4px; font-weight: 700; }
+.rv-done.approved { color: #1b6b3f; }
+.rv-done.rejected { color: #a51d2d; }
+@media (prefers-color-scheme: dark) {
+  .rv-card[data-kind="report"] .rv-kind { background: #4a1d22; color: #ffb3b8; }
+  .rv-card[data-kind="edit"] .rv-kind { background: #1c2f4d; color: #b4d0ff; }
+  .rv-card[data-kind="new"] .rv-kind { background: #183a27; color: #a6e3bd; }
+  .rv-done.approved { color: #7fd6a3; }
+  .rv-done.rejected { color: #ff9aa2; }
+}

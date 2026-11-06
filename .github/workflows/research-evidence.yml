@@ -10,7 +10,7 @@ on:
         description: How many places
         default: '10000'
       script:
-        description: evidence (places' own sources and websites) or corpus (guide pages in data/research/corpus.txt)
+        description: evidence (places' own sources and websites), corpus (guide pages in data/research/corpus.txt) or pages (read the pages listed in a file)
         default: evidence
       corpus:
         description: file in data/research listing the guide pages
@@ -18,6 +18,9 @@ on:
       only:
         description: optional file listing place ids to check (evidence script only)
         default: ''
+      pages:
+        description: file in data/research listing pages to read (pages script only)
+        default: pages.txt
 
 permissions:
   contents: read
@@ -39,3 +42,7 @@ jobs:
         run: node scripts/research-corpus.js
         env:
           CORPUS: ${{ inputs.corpus }}
+      - if: inputs.script == 'pages'
+        run: node scripts/research-pages.js
+        env:
+          PAGES: ${{ inputs.pages }}
